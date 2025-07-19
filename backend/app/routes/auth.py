@@ -1,42 +1,35 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.user_schema import UserCreate, UserLogin, UserOut
-from app.models.user_model import UserInDB
-from app.database import db
-from app.utils.auth import get_password_hash, verify_password, create_access_token
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from bson import ObjectId
-from pprint import pprint
-from app.schemas.user_schema import UserCreate, UserLogin, UserOut
-from app.utils.auth import get_current_user # Import your dependency
+from fastapi import APIRouter, HTTPException, Depends, Body
+from ..schemas.user_schema import UserCreate, UserLogin, UserOut
+from ..utils.auth import (
+    create_access_token, 
+    create_refresh_token, 
+    get_current_user,
+    verify_password,
+    SECRET_KEY, # 👈 Import constants for the refresh endpoint
+    ALGORITHM
+)
+from ..models import user_model # 👈 Import the user model
+from jose import jwt, JWTError # 👈 Import JWT libraries
+from datetime import datetime
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=UserOut)
 async def register(user: UserCreate):
-    # Check if email or phone number already exists
-    if await db["users"].find_one({"email": user.email}):
+    # Use the model to check if the user exists
+    if await user_model.get_user_by_email(user.email):
         raise HTTPException(status_code=400, detail="Email already registered")
-    if await db["users"].find_one({"phone_no": user.phone_no}):
+    if await user_model.get_user_by_phone(user.phone_no): # Assumes you add this function to user_model
         raise HTTPException(status_code=400, detail="Phone number already registered")
 
-    hashed_password = get_password_hash(user.password)
-    user_dict = {
-        "account_name": user.account_name,
-        "email": user.email,
-        "phone_no": user.phone_no,
-        "hashed_password": hashed_password,
-        "profile_image_url": None # Initially null
-    }
-    result = await db["users"].insert_one(user_dict)
-    created_user = await db["users"].find_one({"_id": result.inserted_id})
-    return UserOut(**created_user, id=str(created_user["_id"]))
+    # Use the model to create the user
+    new_user = await user_model.create_user(user)
+    return UserOut(**new_user, id=str(new_user["_id"]))
 
 @router.post("/login")
 async def login(form_data: UserLogin):
-    # Find user by either email or phone number
-    db_user = await db["users"].find_one({
-        "$or": [{"email": form_data.identifier}, {"phone_no": form_data.identifier}]
-    })
+    # Use the model to find the user
+    db_user = await user_model.get_user_by_identifier(form_data.identifier)
 
     if not db_user or not verify_password(form_data.password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -45,8 +38,35 @@ async def login(form_data: UserLogin):
     refresh_token = create_refresh_token({"sub": str(db_user["_id"])})
     return {"access_token": access_token, "refresh_token": refresh_token}
 
-# Use the reusable get_current_user dependency
 @router.get("/me", response_model=UserOut)
 async def get_me(user: dict = Depends(get_current_user)):
-    # The dependency already fetches and validates the user
-    return UserOut(**user, id=str(user["_id"]))
+    # This remains the same, as the dependency handles the logic
+    return UserOut(**user)
+
+@router.post("/refresh")
+async def refresh_token(refresh_token: str = Body(..., embed=True)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid refresh token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        if datetime.fromtimestamp(payload.get("exp")) < datetime.utcnow():
+            raise credentials_exception # Token has expired
+        
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+            
+    except JWTError:
+        raise credentials_exception
+
+    # Use the model to ensure the user still exists
+    user = await user_model.get_user_by_id(user_id)
+    if user is None:
+        raise credentials_exception
+
+    new_access_token = create_access_token({"sub": user_id})
+    return {"access_token": new_access_token, "token_type": "bearer"}

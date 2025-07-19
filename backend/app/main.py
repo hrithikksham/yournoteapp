@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import connect_to_mongo
-from app.routes import auth, note
+from app.routes import auth, note , journal
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 
@@ -35,6 +35,7 @@ def read_root():
 
 app.include_router(auth.router)
 app.include_router(note.router)
+app.include_router(journal.router)
 #app.include_router(user.router, prefix="/api/user", tags=["User"])
 #app.include_router(journal.router, prefix="/api/journal", tags=["Journal"])
 #app.include_router(reminder.router, prefix="/api/reminder", tags=["Reminder"])
