@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+motor             # Async driver for MongoDB
+pydantic[email]   # For data validation and settings
+python-dotenv     # To read from the .env file
+passlib[bcrypt]   # For hashing passwords
+python-jose[cryptography] # For creating JWT (JSON Web Tokens)
