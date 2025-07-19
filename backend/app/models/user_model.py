@@ -37,3 +37,7 @@ async def get_user_by_identifier(identifier: str) -> Optional[Dict]:
     return await collection.find_one({
         "$or": [{"email": identifier}, {"phone_no": identifier}]
     })
+    
+async def get_user_by_phone(phone_no: str) -> Optional[Dict]:
+    """Retrieves a user by their phone number."""
+    return await collection.find_one({"phone_no": phone_no})

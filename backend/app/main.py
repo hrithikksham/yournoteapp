@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import connect_to_mongo
-from app.routes import auth, note , journal ,reminder
+from app.routes import auth, note , journal ,reminder , home
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 
@@ -37,3 +37,4 @@ app.include_router(auth.router)
 app.include_router(note.router)
 app.include_router(journal.router)
 app.include_router(reminder.router)
+app.include_router(home.router)
