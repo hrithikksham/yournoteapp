@@ -7,9 +7,12 @@ const register = (userInfo) => {
 const login = (credentials) => {
   return apiClient.post('/api/auth/login', credentials);
 };
+const refreshToken = (token) => {
+  return apiClient.post('/api/auth/refresh', { refresh_token: token });
+};
 
-// This exports an object containing your functions
 export default {
   register,
   login,
-}
+  refreshToken, // ✅ Export the new function
+};

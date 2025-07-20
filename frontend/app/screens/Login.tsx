@@ -31,10 +31,9 @@ export default function LoginScreen() {
     try {
       // ✅ Call the login function from your API module with the correct payload
       const response = await authApi.login({ identifier, password });
+      await SecureStore.setItemAsync('access_token', response.data.access_token);
+      await SecureStore.setItemAsync('refresh_token', response.data.refresh_token);
 
-      // ✅ Save the token and navigate on success
-      await saveToken(response.data.access_token);
-      // You might also want to save the refresh_token here
       router.replace('/screens/Home');
 
     } catch (err: any) {
