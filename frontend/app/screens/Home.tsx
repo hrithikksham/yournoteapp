@@ -129,7 +129,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* ✅ Animated Header */}
       <Animated.View style={[styles.header, { transform: [{ translateY: headerTranslateY }], opacity: headerOpacity }]}>
-        <TouchableOpacity onPress={() => router.push('/screens/User')}>
+        <TouchableOpacity onPress={() => router.push('/screens/user')}>
           <Ionicons name="person-circle-outline" size={45} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>YOURNOTE</Text>
@@ -219,7 +219,7 @@ export default function HomeScreen() {
         </View>
       </Animated.ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/screens/Addnote')}>
+      <TouchableOpacity style={styles.fab} onPress={() => router.push('/screens/Note')}>
         <Text style={styles.fabText}>ADD NOTE</Text>
       </TouchableOpacity>
     </View>

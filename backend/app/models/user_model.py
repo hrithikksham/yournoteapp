@@ -1,5 +1,5 @@
 # app/models/user_model.py
-
+from pymongo import ReturnDocument
 from app.database import db
 from bson import ObjectId
 from datetime import datetime
@@ -41,3 +41,12 @@ async def get_user_by_identifier(identifier: str) -> Optional[Dict]:
 async def get_user_by_phone(phone_no: str) -> Optional[Dict]:
     """Retrieves a user by their phone number."""
     return await collection.find_one({"phone_no": phone_no})
+
+async def update_user_profile_image(user_id: str, image_url: str) -> Optional[Dict]:
+    """Updates the user's profile image URL and returns the updated user document."""
+    updated_user = await collection.find_one_and_update(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"profile_image_url": image_url}},
+        return_document=ReturnDocument.AFTER
+    )
+    return updated_user

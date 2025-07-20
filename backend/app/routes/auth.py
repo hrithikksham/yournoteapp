@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends, Body , UploadFile, File
+from pathlib import Path
+import re
+import aiofiles
 from ..schemas.user_schema import UserCreate, UserLogin, UserOut
 from ..utils.auth import (
     create_access_token, 
@@ -70,3 +73,34 @@ async def refresh_token(refresh_token: str = Body(..., embed=True)):
 
     new_access_token = create_access_token({"sub": user_id})
     return {"access_token": new_access_token, "token_type": "bearer"}
+
+@router.post("/upload-profile-image", response_model=UserOut)
+async def upload_profile_image(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
+
+    # Create a safe, unique filename
+    uploads_dir = Path("app/static/profile_images")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    safe_filename = re.sub(r'[^a-zA-Z0-9._-]', '', file.filename)
+    filename = f"{user['id']}_{datetime.utcnow().timestamp()}_{safe_filename}"
+    file_path = uploads_dir / filename
+    public_path = f"/static/profile_images/{filename}"
+
+    # Save the file asynchronously
+    try:
+        async with aiofiles.open(file_path, "wb") as buffer:
+            content = await file.read()
+            await buffer.write(content)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Could not save the image.")
+
+    # Update the user's profile_image_url in the database
+    updated_user = await user_model.update_user_profile_image(user['id'], public_path)
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found during update.")
+
+    return UserOut(**updated_user, id=str(updated_user["_id"]))
