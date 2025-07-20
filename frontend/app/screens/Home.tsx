@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, ActivityIndicator, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -34,12 +34,17 @@ const initialData: HomeData = {
   labels: [],
 };
 
+const HEADER_HEIGHT = 100; // Define header height for animations
+
 export default function HomeScreen() {
   const router = useRouter();
   const [data, setData] = useState<HomeData>(initialData);
   const [activeLabel, setActiveLabel] = useState<string>('All');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // ✅ Ref for animated scroll value
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const fetchData = async () => {
     try {
@@ -88,6 +93,23 @@ export default function HomeScreen() {
     ? data.notes 
     : data.notes.filter(note => note.labels?.includes(activeLabel));
 
+  // ✅ Split notes into two columns for a proper staggered grid
+  const leftColumnNotes = filteredNotes.filter((_, index) => index % 2 === 0);
+  const rightColumnNotes = filteredNotes.filter((_, index) => index % 2 === 1);
+
+  // ✅ Animate header based on scroll position
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange: [0, -HEADER_HEIGHT],
+    extrapolate: 'clamp',
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT / 2],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   if (isLoading) {
     return <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#fff" /></View>;
   }
@@ -105,17 +127,27 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/screens/Profile')}>
-          <Ionicons name="person-circle-outline" size={32} color="white" />
+      {/* ✅ Animated Header */}
+      <Animated.View style={[styles.header, { transform: [{ translateY: headerTranslateY }], opacity: headerOpacity }]}>
+        <TouchableOpacity onPress={() => router.push('/screens/User')}>
+          <Ionicons name="person-circle-outline" size={45} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>YOURNOTE</Text>
         <TouchableOpacity onPress={() => router.push('/screens/Settings')}>
-          <Feather name="settings" size={28} color="white" />
+          <Feather name="settings" size={35} color="white" />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* ✅ Use Animated.ScrollView */}
+      <Animated.ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+      >
         <TouchableOpacity onPress={() => router.push('/screens/Journal')}>
           <BlurView intensity={40} tint="dark" style={styles.card}>
             <Text style={styles.cardTitle}>Journal Book</Text>
@@ -158,19 +190,34 @@ export default function HomeScreen() {
           )}
         />
 
+        {/* ✅ Refactored Notes Grid */}
         <View style={styles.notesGrid}>
           {filteredNotes.length > 0 ? (
-            filteredNotes.map((note, index) => (
-              <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note/${note._id}`)}>
-                <BlurView intensity={50} tint="dark" style={[styles.noteCard, { backgroundColor: index % 2 === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.15)' }]}>
-                  <Text style={styles.noteTitle} numberOfLines={2}>{note.title}</Text>
-                  <Text style={styles.noteContent} numberOfLines={6}>{note.content}</Text>
-                </BlurView>
-              </TouchableOpacity>
-            ))
+            <>
+              <View style={styles.column}>
+                {leftColumnNotes.map(note => (
+                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note`)}>
+                    <BlurView intensity={50} tint="dark" style={styles.noteCard}>
+                      <Text style={styles.noteTitle} numberOfLines={2}>{note.title}</Text>
+                      <Text style={styles.noteContent} numberOfLines={6}>{note.content}</Text>
+                    </BlurView>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.column}>
+                {rightColumnNotes.map(note => (
+                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note`)}>
+                    <BlurView intensity={50} tint="dark" style={styles.noteCard}>
+                      <Text style={styles.noteTitle} numberOfLines={2}>{note.title}</Text>
+                      <Text style={styles.noteContent} numberOfLines={8}>{note.content}</Text>
+                    </BlurView>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
           ) : <View style={styles.emptyNotesContainer}><Text style={styles.emptyText}>No notes found for "{activeLabel}"</Text></View>}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <TouchableOpacity style={styles.fab} onPress={() => router.push('/screens/Addnote')}>
         <Text style={styles.fabText}>ADD NOTE</Text>
@@ -186,11 +233,28 @@ const styles = StyleSheet.create({
   errorText: { color: '#ff6b6b', fontSize: 16, textAlign: 'center', marginBottom: 20 },
   retryButton: { backgroundColor: '#FEFDE8', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
   retryButtonText: { color: '#1D1D1D', fontWeight: 'bold' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 10 },
-  headerTitle: { color: 'white', fontSize: 22, fontWeight: 'bold' },
-  scrollContent: { paddingHorizontal: 15, paddingBottom: 100 },
-  card: { padding: 20, borderRadius: 20, overflow: 'hidden', marginBottom: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  cardTitle: { color: 'white', fontSize: 24, fontWeight: 'bold' },
+  header: {
+    position: 'absolute', // ✅ Position header absolutely
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10, // ✅ Ensure header is on top
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingTop: 30, // Adjust for status bar
+    paddingBottom: 10,
+    backgroundColor: '#121212', // Give it a solid background
+  },
+  headerTitle: { color: 'white', fontSize: 28, fontFamily: 'Pixel', marginTop: 20 },
+  scrollContent: {
+    paddingHorizontal: 15,
+    paddingBottom: 100,
+    paddingTop: HEADER_HEIGHT, // ✅ Add padding to push content below the header
+  },
+  card: { padding: 25, borderRadius: 20, overflow: 'hidden', marginBottom: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  cardTitle: { color: 'white', fontSize: 20, fontFamily: 'Pixel' },
   cardSubtitle: { color: '#ccc', fontSize: 14, marginTop: 4 },
   plusIconContainer: { position: 'absolute', right: 20, top: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 15, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   remindersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
@@ -198,16 +262,45 @@ const styles = StyleSheet.create({
   reminderText: { color: 'white', fontSize: 16, marginLeft: 10 },
   reminderTextCompleted: { textDecorationLine: 'line-through', color: '#888' },
   emptyText: { color: '#888', fontStyle: 'italic', paddingVertical: 10, textAlign: 'center' },
-  labelsContainer: { paddingVertical: 10 },
+  labelsContainer: { paddingVertical: 10 , marginBottom: 8 },
   labelChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 16, marginRight: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
   labelChipActive: { backgroundColor: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.5)' },
   labelText: { color: 'white', fontWeight: '600' },
-  notesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  noteCardContainer: { width: '48%', marginBottom: 15 },
-  noteCard: { padding: 15, borderRadius: 15, minHeight: 150, overflow: 'hidden' },
-  noteTitle: { color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
-  noteContent: { color: '#ddd', fontSize: 14, lineHeight: 18 },
   emptyNotesContainer: { width: '100%', alignItems: 'center', paddingVertical: 40 },
-  fab: { position: 'absolute', bottom: 40, right: 30, backgroundColor: '#FEFDE8', paddingVertical: 15, paddingHorizontal: 25, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  fabText: { color: '#1D1D1D', fontWeight: 'bold', fontSize: 16 },
+  fab: { position: 'absolute', bottom: 40, right: 30, backgroundColor: '#fff', paddingVertical: 15, paddingHorizontal: 25, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
+  fabText: { color: '#1D1D1D', fontFamily: 'Pixel', fontSize: 12 },
+  
+  // ✅ Refactored Notes Grid Styles
+  notesGrid: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between' 
+  },
+  column: {
+    width: '49%', // Each column takes up half the space
+  },
+  noteCardContainer: { 
+    marginBottom: 8, // Space between cards in the same column
+  },
+  noteCard: { 
+    padding: 20, 
+    borderRadius: 12, 
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  noteTitle: { 
+    color: 'white', 
+    fontSize: 18, 
+    fontFamily: 'system-ui',
+    marginBottom: 8, 
+    fontWeight: 'bold'
+  },
+  noteContent: { 
+    color: '#ddd', 
+    fontSize: 14, 
+    lineHeight: 18, 
+    letterSpacing: 0.8,
+    fontWeight: '300'
+  },
 });
