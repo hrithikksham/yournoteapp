@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient, { getBaseURL } from './client';
 import * as SecureStore from 'expo-secure-store';
 
 // Helper to get the auth token
@@ -8,7 +8,6 @@ const getToken = async () => {
   return token;
 };
 
-// Create a new note
 const createNote = async (noteData) => {
   const token = await getToken();
   return apiClient.post('/api/notes', noteData, {
@@ -16,7 +15,6 @@ const createNote = async (noteData) => {
   });
 };
 
-// Get a single note by its ID
 const getNoteById = async (noteId) => {
   const token = await getToken();
   return apiClient.get(`/api/notes/${noteId}`, {
@@ -24,7 +22,6 @@ const getNoteById = async (noteId) => {
   });
 };
 
-// Update an existing note
 const updateNote = async (noteId, updateData) => {
   const token = await getToken();
   return apiClient.put(`/api/notes/${noteId}`, updateData, {
@@ -32,7 +29,6 @@ const updateNote = async (noteId, updateData) => {
   });
 };
 
-// Delete a note
 const deleteNote = async (noteId) => {
   const token = await getToken();
   return apiClient.delete(`/api/notes/${noteId}`, {
@@ -40,7 +36,6 @@ const deleteNote = async (noteId) => {
   });
 };
 
-// Upload an image for a note
 const uploadNoteImage = async (imageUri) => {
     const token = await getToken();
     const formData = new FormData();
@@ -58,6 +53,13 @@ const uploadNoteImage = async (imageUri) => {
     });
 };
 
+const getAvailableLabels = async () => {
+  const token = await getToken();
+  return apiClient.get('/api/labels', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
 
 export default {
   createNote,
@@ -65,4 +67,6 @@ export default {
   updateNote,
   deleteNote,
   uploadNoteImage,
+  getAvailableLabels,
+  getBaseURL,
 };

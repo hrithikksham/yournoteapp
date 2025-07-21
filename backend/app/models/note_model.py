@@ -51,3 +51,9 @@ async def delete_note(note_id: str, user_id: str) -> int:
     """Deletes a note and returns the number of documents deleted."""
     result = await collection.delete_one({"_id": ObjectId(note_id), "user_id": user_id})
     return result.deleted_count
+
+async def get_all_labels_for_user(user_id: str) -> List[str]:
+    """Retrieves all unique, sorted labels for a specific user."""
+    # The distinct method is highly efficient for this task
+    labels = await collection.distinct("labels", {"user_id": user_id})
+    return sorted(labels)
