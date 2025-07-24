@@ -6,7 +6,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 
 import homeApi from '../../api/home';
-import remindersApi from '../../api/reminder';
+import remindersApi from '../../api/reminders';
 
 // TypeScript interfaces for type safety
 interface Reminder {
@@ -43,7 +43,6 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // ✅ Ref for animated scroll value
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const fetchData = async () => {
@@ -80,9 +79,9 @@ export default function HomeScreen() {
     setData(prev => ({ ...prev, reminders: updatedReminders }));
 
     try {
-      const token = await SecureStore.getItemAsync('access_token');
-      if (!token) throw new Error('No auth token found');
-      await remindersApi.updateReminder(reminderId, !currentStatus, token);
+      // ✅ Corrected the function call to match the API definition (2 arguments)
+      // The token is handled automatically by the API layer.
+      await remindersApi.updateReminder(reminderId, !currentStatus);
     } catch (err) {
       console.error("Failed to update reminder:", err);
       setData(prev => ({ ...prev, reminders: originalReminders }));
@@ -93,11 +92,9 @@ export default function HomeScreen() {
     ? data.notes 
     : data.notes.filter(note => note.labels?.includes(activeLabel));
 
-  // ✅ Split notes into two columns for a proper staggered grid
   const leftColumnNotes = filteredNotes.filter((_, index) => index % 2 === 0);
   const rightColumnNotes = filteredNotes.filter((_, index) => index % 2 === 1);
 
-  // ✅ Animate header based on scroll position
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, HEADER_HEIGHT],
     outputRange: [0, -HEADER_HEIGHT],
@@ -127,7 +124,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ✅ Animated Header */}
       <Animated.View style={[styles.header, { transform: [{ translateY: headerTranslateY }], opacity: headerOpacity }]}>
         <TouchableOpacity onPress={() => router.push('/screens/user')}>
           <Ionicons name="person-circle-outline" size={45} color="white" />
@@ -138,7 +134,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* ✅ Use Animated.ScrollView */}
       <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -190,7 +185,6 @@ export default function HomeScreen() {
           )}
         />
 
-        {/* ✅ Refactored Notes Grid */}
         <View style={styles.notesGrid}>
           {filteredNotes.length > 0 ? (
             <>
@@ -234,24 +228,24 @@ const styles = StyleSheet.create({
   retryButton: { backgroundColor: '#FEFDE8', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
   retryButtonText: { color: '#1D1D1D', fontWeight: 'bold' },
   header: {
-    position: 'absolute', // ✅ Position header absolutely
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 10, // ✅ Ensure header is on top
+    zIndex: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingTop: 30, // Adjust for status bar
+    paddingTop: 30,
     paddingBottom: 10,
-    backgroundColor: '#121212', // Give it a solid background
+    backgroundColor: '#121212',
   },
   headerTitle: { color: 'white', fontSize: 28, fontFamily: 'Pixel', marginTop: 20 },
   scrollContent: {
     paddingHorizontal: 15,
     paddingBottom: 100,
-    paddingTop: HEADER_HEIGHT, // ✅ Add padding to push content below the header
+    paddingTop: HEADER_HEIGHT,
   },
   card: { padding: 25, borderRadius: 20, overflow: 'hidden', marginBottom: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   cardTitle: { color: 'white', fontSize: 20, fontFamily: 'Pixel' },
@@ -269,17 +263,15 @@ const styles = StyleSheet.create({
   emptyNotesContainer: { width: '100%', alignItems: 'center', paddingVertical: 40 },
   fab: { position: 'absolute', bottom: 40, right: 30, backgroundColor: '#fff', paddingVertical: 15, paddingHorizontal: 25, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
   fabText: { color: '#1D1D1D', fontFamily: 'Pixel', fontSize: 12 },
-  
-  // ✅ Refactored Notes Grid Styles
   notesGrid: { 
     flexDirection: 'row', 
     justifyContent: 'space-between' 
   },
   column: {
-    width: '49%', // Each column takes up half the space
+    width: '49%',
   },
   noteCardContainer: { 
-    marginBottom: 8, // Space between cards in the same column
+    marginBottom: 8,
   },
   noteCard: { 
     padding: 20, 

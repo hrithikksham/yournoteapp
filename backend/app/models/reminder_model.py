@@ -67,3 +67,8 @@ async def delete_reminder(reminder_id: str, user_id: str) -> int:
     """Deletes a reminder and returns the number of documents deleted."""
     result = await collection.delete_one({"_id": ObjectId(reminder_id), "user_id": user_id})
     return result.deleted_count
+
+async def get_all_reminders_for_user(user_id: str) -> List[Dict]:
+    """Retrieves all reminders for a user, sorted by creation date."""
+    cursor = collection.find({"user_id": user_id}).sort("created_at", -1)
+    return await cursor.to_list(length=None)

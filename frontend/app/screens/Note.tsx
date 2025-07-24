@@ -1,191 +1,53 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Animated, Easing, Dimensions } from 'react-native';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, ScrollView, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform, Modal, Animated, Easing } from 'react-native';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as SecureStore from 'expo-secure-store';
 import notesApi from '../../api/note';
 
-const { height: screenHeight } = Dimensions.get('window');
-
-// --- Circular Action Menu Component ---
-interface Action {
-  icon: keyof typeof Feather.glyphMap | keyof typeof Ionicons.glyphMap;
-  title: string;
-  onPress: () => void;
-  iconLibrary?: 'Feather' | 'Ionicons';
+// --- Local ActionSheet Component ---
+interface Action { 
+  icon: keyof typeof Feather.glyphMap; 
+  title: string; 
+  onPress: () => void; 
 }
 
-interface CircularActionMenuProps {
-  visible: boolean;
-  onClose: () => void;
-  actions: Action[];
+interface ActionSheetProps { 
+  visible: boolean; 
+  onClose: () => void; 
+  actions: Action[]; 
 }
 
-function CircularActionMenu({ visible, onClose, actions }: CircularActionMenuProps) {
-  const slideAnim = useRef(new Animated.Value(screenHeight)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnims = useRef(actions.map(() => new Animated.Value(0))).current;
-
+function ActionSheet({ visible, onClose, actions }: ActionSheetProps) {
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  
   useEffect(() => {
-    if (visible) {
-      // Slide up animation
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 200,
-          easing: Easing.out(Easing.bezier(0.25, 0.46, 0.45, 0.94)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Stagger animation for action buttons
-        const staggeredAnimations = scaleAnims.map((anim, index) =>
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: 200,
-            delay: index * 80,
-            easing: Easing.out(Easing.back(1.5)),
-            useNativeDriver: true,
-          })
-        );
-        Animated.stagger(80, staggeredAnimations).start();
-      });
-    } else {
-      // Hide animation
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: screenHeight,
-          duration: 300,
-          easing: Easing.in(Easing.bezier(0.55, 0.06, 0.68, 0.19)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        ...scaleAnims.map(anim =>
-          Animated.timing(anim, {
-            toValue: 0,
-            duration: 150,
-            useNativeDriver: true,
-          })
-        ),
-      ]).start();
-    }
+    Animated.timing(slideAnim, { 
+      toValue: visible ? 0 : 300, 
+      duration: 250, 
+      easing: Easing.out(Easing.ease), 
+      useNativeDriver: true 
+    }).start();
   }, [visible]);
-
-  const renderIcon = (action: Action) => {
-    const IconComponent = action.iconLibrary === 'Ionicons' ? Ionicons : Feather;
-    return <IconComponent name={action.icon as any} size={24} color="white" />;
-  };
 
   return (
     <Modal transparent={true} visible={visible} onRequestClose={onClose}>
-      <Animated.View style={[circularMenuStyles.overlay, { opacity: fadeAnim }]}>
-        <TouchableOpacity 
-          style={circularMenuStyles.overlayTouch} 
-          activeOpacity={1} 
-          onPress={onClose}
-        />
-        
-        <Animated.View 
-          style={[
-            circularMenuStyles.container,
-            { transform: [{ translateY: slideAnim }] }
-          ]}
-        >
-          {/* Handle bar */}
-          <View style={circularMenuStyles.handleBar} />
-          
-          {/* Action buttons in circular layout */}
-          <View style={circularMenuStyles.actionsContainer}>
-            {actions.map((action, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  circularMenuStyles.actionButtonContainer,
-                  { transform: [{ scale: scaleAnims[index] }] }
-                ]}
-              >
-                <TouchableOpacity 
-                  style={circularMenuStyles.actionButton} 
-                  onPress={() => {
-                    action.onPress();
-                    onClose();
-                  }}
-                >
-                  {renderIcon(action)}
-                </TouchableOpacity>
-                <Text style={circularMenuStyles.actionLabel}>{action.title}</Text>
-              </Animated.View>
-            ))}
-          </View>
+      <TouchableOpacity style={actionSheetStyles.overlay} activeOpacity={1} onPress={onClose}>
+        <Animated.View style={[actionSheetStyles.container, { transform: [{ translateY: slideAnim }] }]}>
+          {actions.map((action, index) => (
+            <TouchableOpacity key={index} style={actionSheetStyles.actionButton} onPress={action.onPress}>
+              <Feather name={action.icon} size={24} color="#ccc" />
+              <Text style={actionSheetStyles.actionText}>{action.title}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={[actionSheetStyles.actionButton, actionSheetStyles.cancelButton]} onPress={onClose}>
+            <Text style={[actionSheetStyles.actionText, { color: '#ff4d4d' }]}>Cancel</Text>
+          </TouchableOpacity>
         </Animated.View>
-      </Animated.View>
+      </TouchableOpacity>
     </Modal>
   );
 }
-
-const circularMenuStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-end',
-  },
-  overlayTouch: {
-    flex: 1,
-  },
-  container: {
-    backgroundColor: '#1A1A1A',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingBottom: 50,
-    paddingTop: 20,
-    minHeight: 280,
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 30,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-  },
-  actionButtonContainer: {
-    alignItems: 'center',
-    marginVertical: 15,
-    width: '22%',
-  },
-  actionButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  actionLabel: {
-    color: '#CCCCCC',
-    fontSize: 12,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-});
 
 // --- Main NoteScreen Component ---
 export default function NoteScreen() {
@@ -193,205 +55,297 @@ export default function NoteScreen() {
   const params = useLocalSearchParams();
   const noteId = params.id as string | undefined;
 
+  // State management
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [labels, setLabels] = useState<string[]>([]);
   const [availableLabels, setAvailableLabels] = useState<string[]>([]);
   const [newLabel, setNewLabel] = useState('');
+  const [showLabelInput, setShowLabelInput] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   
   const [isLoading, setIsLoading] = useState(!!noteId);
   const [isSaving, setIsSaving] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
 
+  const contentInputRef = useRef<TextInput>(null);
+
+  // Fetch note data and available labels
   const fetchData = async () => {
     try {
-      const promises = [notesApi.getAvailableLabels()];
-      if (noteId) promises.push(notesApi.getNoteById(noteId));
-      
-      const [labelsResponse, noteResponse] = await Promise.all(promises);
+      const [labelsResponse, noteResponse] = await Promise.all([
+        notesApi.getAvailableLabels(),
+        noteId ? notesApi.getNoteById(noteId) : Promise.resolve(null),
+      ]);
       
       setAvailableLabels(labelsResponse.data || []);
-
+      
       if (noteResponse) {
         const note = noteResponse.data;
-        setTitle(note.title);
-        setContent(note.content);
+        setTitle(note.title || '');
+        setContent(note.content || '');
         setLabels(note.labels || []);
+        setIsLocked(note.isLocked || false);
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
+      Alert.alert('Error', 'Could not load note data.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchData(); }, [noteId]));
+  useFocusEffect(useCallback(() => { 
+    fetchData(); 
+  }, [noteId]));
 
-  const handleAddLabel = (labelToAdd: string) => {
-    const trimmedLabel = labelToAdd.trim();
+  // Label management
+  const handleToggleLabel = (label: string) => {
+    setLabels(prev => 
+      prev.includes(label) 
+        ? prev.filter(l => l !== label) 
+        : [...prev, label]
+    );
+  };
+  
+  const handleAddNewLabel = () => {
+    const trimmedLabel = newLabel.trim().toLowerCase();
     if (trimmedLabel && !labels.includes(trimmedLabel)) {
-      setLabels([...labels, trimmedLabel]);
+      setLabels(prev => [...prev, trimmedLabel]);
       if (!availableLabels.includes(trimmedLabel)) {
-        setAvailableLabels([...availableLabels, trimmedLabel]);
+        setAvailableLabels(prev => [...prev, trimmedLabel]);
       }
     }
     setNewLabel('');
-  };
-  
-  const handleToggleLabel = (label: string) => {
-    if (labels.includes(label)) {
-      setLabels(labels.filter(l => l !== label));
-    } else {
-      setLabels([...labels, label]);
-    }
+    setShowLabelInput(false);
   };
 
+  // Save note functionality
   const handleSaveNote = async () => {
-    if (!title.trim() && !content.trim()) {
-      Alert.alert("Empty Note", "Please add a title or content before saving.");
+    if (!title.trim()) {
+      Alert.alert('Missing Title', 'Please give your note a title.');
       return;
     }
-
+    
     setIsSaving(true);
     try {
-      const noteData = { title, content, labels };
+      const noteData = { 
+        title: title.trim(), 
+        content, 
+        labels,
+        isLocked 
+      };
       
       if (noteId) {
         await notesApi.updateNote(noteId, noteData);
-        Alert.alert("Success", "Note updated successfully!");
       } else {
         await notesApi.createNote(noteData);
-        Alert.alert("Success", "Note created successfully!");
       }
-      
       router.back();
     } catch (error) {
       console.error("Failed to save note:", error);
-      Alert.alert("Error", "Failed to save note. Please try again.");
+      Alert.alert('Save Failed', 'Could not save the note.');
     } finally {
       setIsSaving(false);
     }
   };
 
+  // Image handling
   const handleImagePick = async (useCamera: boolean) => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant permission to access photos.');
-        return;
-      }
+    setIsMenuOpen(false);
+    
+    const action = useCamera 
+      ? ImagePicker.launchCameraAsync 
+      : ImagePicker.launchImageLibraryAsync;
+    
+    const permission = useCamera 
+      ? await ImagePicker.requestCameraPermissionsAsync() 
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (useCamera) {
-        const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-        if (cameraStatus !== 'granted') {
-          Alert.alert('Permission needed', 'Please grant permission to access camera.');
-          return;
-        }
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const uploadResult = await notesApi.uploadNoteImage(result.assets[0].uri);
-        const imageUrl = uploadResult.data.url;
-        
-        setContent(prev => prev + (prev.length > 0 ? '\n\n' : '') + `![Image](${imageUrl})`);
-        Alert.alert("Success", "Image uploaded successfully!");
-      }
-    } catch (error) {
-      console.error("Failed to pick image:", error);
-      Alert.alert("Error", "Failed to upload image. Please try again.");
+    if (!permission.granted) {
+      Alert.alert("Permission Required", "Please grant permission to access your photos/camera.");
+      return;
     }
-  };
 
-  const insertCheckbox = () => {
-    setContent(prev => prev + (prev.length > 0 ? '\n' : '') + '- [ ] ');
-  };
+    const result = await action({ 
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      allowsEditing: true, 
+      aspect: [4, 3], 
+      quality: 0.8,
+      allowsMultipleSelection: false
+    });
 
-  const handleLockNote = async () => {
-    try {
-      const currentLockStatus = await SecureStore.getItemAsync(`note_locked_${noteId || 'new'}`);
-      const newLockStatus = currentLockStatus !== 'true';
+    if (!result.canceled && result.assets.length > 0) {
+      const imageUri = result.assets[0].uri;
+      setIsImageUploading(true);
       
-      await SecureStore.setItemAsync(`note_locked_${noteId || 'new'}`, newLockStatus.toString());
-      setIsLocked(newLockStatus);
-      
-      Alert.alert(
-        newLockStatus ? "Note Locked" : "Note Unlocked",
-        newLockStatus ? "This note is now protected." : "This note is no longer protected."
-      );
-    } catch (error) {
-      Alert.alert("Error", "Failed to toggle lock status.");
-    }
-  };
-
-  // Check lock status on mount
-  useEffect(() => {
-    const checkLockStatus = async () => {
       try {
-        const lockStatus = await SecureStore.getItemAsync(`note_locked_${noteId || 'new'}`);
-        setIsLocked(lockStatus === 'true');
+        const response = await notesApi.uploadNoteImage(imageUri);
+        const imageUrl = `${notesApi.getBaseURL()}${response.data.path}`;
+        const markdownImage = `\n![Image](${imageUrl})\n`;
+        setContent(prev => prev + markdownImage);
       } catch (error) {
-        console.log("Failed to check lock status:", error);
+        console.error("Image upload failed:", error);
+        Alert.alert("Upload Failed", "Could not upload the image. Please try again.");
+      } finally {
+        setIsImageUploading(false);
       }
-    };
-    checkLockStatus();
-  }, [noteId]);
+    }
+  };
 
-  const menuActions: Action[] = [
+  // Insert checkbox/todo item
+  const insertCheckbox = () => {
+    const cursorPosition = contentInputRef.current?.props.selection?.start || content.length;
+    const beforeCursor = content.substring(0, cursorPosition);
+    const afterCursor = content.substring(cursorPosition);
+    const newCheckbox = (beforeCursor.length > 0 && !beforeCursor.endsWith('\n') ? '\n' : '');
+    
+    setContent(beforeCursor + newCheckbox + afterCursor);
+    setIsMenuOpen(false);
+    
+    // Focus the text input and set cursor position after checkbox
+    setTimeout(() => {
+      contentInputRef.current?.focus();
+    }, 100);
+  };
+
+  // Lock/unlock note
+  const handleLockToggle = () => {
+    setIsLocked(!isLocked);
+    setIsMenuOpen(false);
+    Alert.alert(
+      isLocked ? "Note Unlocked" : "Note Locked", 
+      isLocked ? "Note is now editable" : "Note is now protected"
+    );
+  };
+
+  // Menu actions
+  const menuActions = [
     { 
-      icon: 'lock', 
-      title: isLocked ? 'Unlock' : 'Lock Note', 
-      onPress: handleLockNote,
-      iconLibrary: 'Feather'
+      icon: 'image' as const, 
+      title: 'Add Image from Gallery', 
+      onPress: () => handleImagePick(false) 
     },
     { 
-      icon: 'check-square', 
-      title: 'To-do List', 
-      onPress: insertCheckbox,
-      iconLibrary: 'Feather'
+      icon: 'camera' as const, 
+      title: 'Take Photo', 
+      onPress: () => handleImagePick(true) 
     },
     { 
-      icon: 'image', 
-      title: 'Gallery', 
-      onPress: () => handleImagePick(false),
-      iconLibrary: 'Feather'
+      icon: 'check-square' as const, 
+      title: 'Insert To-Do Item', 
+      onPress: insertCheckbox 
     },
     { 
-      icon: 'camera', 
-      title: 'Camera', 
-      onPress: () => handleImagePick(true),
-      iconLibrary: 'Feather'
+      icon: isLocked ? 'unlock' as const : 'lock' as const, 
+      title: isLocked ? 'Unlock Note' : 'Lock Note', 
+      onPress: handleLockToggle 
     },
   ];
 
+  // Parse and render content with interactive elements
+  const ParsedContent = useMemo(() => {
+    if (!content) return null;
+
+    const lines = content.split('\n');
+    const IMAGE_REGEX = /!\[.*?\]\((.*?)\)/g;
+    const CHECKBOX_REGEX = /^- \[([ x])\] (.*)/;
+
+    return lines.map((line, index) => {
+      // Handle images
+      const imageMatch = [...line.matchAll(IMAGE_REGEX)];
+      if (imageMatch.length > 0) {
+        return (
+          <View key={index} style={styles.imageContainer}>
+            <Image 
+              source={{ uri: imageMatch[0][1] }} 
+              style={styles.embeddedImage} 
+              resizeMode="contain" 
+            />
+          </View>
+        );
+      }
+
+      // Handle checkboxes/todos
+      const checkboxMatch = line.match(CHECKBOX_REGEX);
+      if (checkboxMatch) {
+        const isChecked = checkboxMatch[1] === 'x';
+        const text = checkboxMatch[2];
+        
+        const toggleCheck = () => {
+          if (isLocked) return;
+          
+          const newLines = [...lines];
+          newLines[index] = `- [${isChecked ? ' ' : 'x'}] ${text}`;
+          setContent(newLines.join('\n'));
+        };
+        
+        return (
+          <TouchableOpacity 
+            key={index} 
+            style={styles.checkboxContainer} 
+            onPress={toggleCheck}
+            disabled={isLocked}
+          >
+            <Feather 
+              name={isChecked ? "check-square" : "square"} 
+              size={22} 
+              color={isChecked ? "#50C878" : "#888"} 
+            />
+            <Text style={[
+              styles.checkboxText, 
+              isChecked && styles.checkboxTextChecked
+            ]}>
+              {text}
+            </Text>
+          </TouchableOpacity>
+        );
+      }
+
+      // Handle regular text
+      if (line.trim()) {
+        return (
+          <Text key={index} style={styles.contentText}>
+            {line}
+          </Text>
+        );
+      }
+
+      // Empty line
+      return <View key={index} style={styles.emptyLine} />;
+    });
+  }, [content, isLocked]);
+
+  // Loading state
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#fff" />
+        <Text style={styles.loadingText}>Loading note...</Text>
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+        style={{ flex: 1 }}
+      >
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{noteId ? 'edit note' : 'add note'}</Text>
-          <TouchableOpacity onPress={handleSaveNote} disabled={isSaving} style={styles.saveButton}>
+          <Text style={styles.headerTitle}>
+            {noteId ? 'edit note' : 'add note'}
+          </Text>
+          <TouchableOpacity onPress={handleSaveNote} disabled={isSaving || isLocked}>
             {isSaving ? (
               <ActivityIndicator color="white" size="small" />
             ) : (
-              <Feather name="check" size={28} color="white" />
+              <Feather name="check" size={28} color={isLocked ? "#666" : "white"} />
             )}
           </TouchableOpacity>
         </View>
@@ -401,69 +355,142 @@ export default function NoteScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <TextInput
-            style={styles.titleInput}
-            placeholder="Title"
-            placeholderTextColor="#666"
-            value={title}
+          {/* Title Input */}
+          <TextInput 
+            style={[styles.titleInput, isLocked && styles.disabledInput]} 
+            placeholder="Title" 
+            placeholderTextColor="#888" 
+            value={title} 
             onChangeText={setTitle}
-            multiline
+            editable={!isLocked}
+            multiline={false}
           />
           
+          {/* Labels Section */}
           <View style={styles.labelsSection}>
-            <View style={styles.labelsContainer}>
-              {labels.map(label => (
-                <TouchableOpacity key={label} onPress={() => handleToggleLabel(label)}>
-                  <View style={styles.labelChipSelected}>
-                    <Text style={styles.labelTextSelected}>{label}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-              
-              {availableLabels.filter(l => !labels.includes(l)).slice(0, 3).map(label => (
-                <TouchableOpacity key={label} onPress={() => handleToggleLabel(label)}>
-                  <View style={styles.labelChipAvailable}>
-                    <Text style={styles.labelTextAvailable}>{label}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-              
-              <TextInput
-                style={styles.newLabelInput}
-                placeholder="add label +"
-                placeholderTextColor="#666"
-                value={newLabel}
-                onChangeText={setNewLabel}
-                onSubmitEditing={() => handleAddLabel(newLabel)}
-              />
-            </View>
+            {/* Selected Labels */}
+            {labels.length > 0 && (
+              <View style={styles.labelsContainer}>
+                {labels.map(label => (
+                  <TouchableOpacity 
+                    key={label} 
+                    onPress={() => !isLocked && handleToggleLabel(label)}
+                    disabled={isLocked}
+                  >
+                    <View style={styles.labelChipSelected}>
+                      <Text style={styles.labelTextSelected}>{label}</Text>
+                      {!isLocked && (
+                        <Feather name="x" size={14} color="white" style={{ marginLeft: 6 }} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Available Labels */}
+            {!isLocked && (
+              <View style={styles.labelsContainer}>
+                {availableLabels
+                  .filter(l => !labels.includes(l))
+                  .slice(0, 5)
+                  .map(label => (
+                    <TouchableOpacity 
+                      key={label} 
+                      onPress={() => handleToggleLabel(label)}
+                    >
+                      <View style={styles.labelChipAvailable}>
+                        <Text style={styles.labelTextAvailable}>{label}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                
+                {/* Add Label Button */}
+                {!showLabelInput ? (
+                  <TouchableOpacity onPress={() => setShowLabelInput(true)}>
+                    <View style={styles.addLabelChip}>
+                      <Text style={styles.addLabelText}>add label +</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <TextInput 
+                    style={styles.newLabelInput} 
+                    placeholder="add label +" 
+                    placeholderTextColor="#666" 
+                    value={newLabel} 
+                    onChangeText={setNewLabel} 
+                    onSubmitEditing={handleAddNewLabel}
+                    onBlur={() => {
+                      if (!newLabel.trim()) setShowLabelInput(false);
+                    }}
+                    autoFocus
+                  />
+                )}
+              </View>
+            )}
+          </View>
+          
+          {/* Content Editor */}
+          <View style={styles.contentEditor}>
+            {/* Display parsed content when locked */}
+            {isLocked ? (
+              <View style={styles.contentRenderer}>
+                {ParsedContent}
+              </View>
+            ) : (
+              <>
+                {/* Rendered content preview */}
+                <View style={styles.contentRenderer}>
+                  {ParsedContent}
+                </View>
+                
+                {/* Invisible text input for editing */}
+                <TextInput 
+                  ref={contentInputRef}
+                  style={styles.contentInput}
+                  placeholder="type your notes here"
+                  placeholderTextColor="#666"
+                  value={content}
+                  onChangeText={setContent}
+                  multiline
+                  textAlignVertical="top"
+                  scrollEnabled={false}
+                />
+              </>
+            )}
           </View>
 
-          <View style={styles.contentContainer}>
-            <TextInput
-              style={styles.contentInput}
-              placeholder="type your notes here"
-              placeholderTextColor="#666"
-              multiline
-              value={content}
-              onChangeText={setContent}
-              textAlignVertical="top"
-            />
-          </View>
+          {/* Lock indicator */}
+          {isLocked && (
+            <View style={styles.lockIndicator}>
+              <Feather name="lock" size={16} color="#666" />
+              <Text style={styles.lockText}>Note is locked</Text>
+            </View>
+          )}
+
+          {/* Image upload indicator */}
+          {isImageUploading && (
+            <View style={styles.uploadingContainer}>
+              <ActivityIndicator color="#fff" />
+              <Text style={styles.uploadingText}>Uploading image...</Text>
+            </View>
+          )}
         </ScrollView>
 
-        <CircularActionMenu 
-          visible={isMenuOpen} 
-          onClose={() => setIsMenuOpen(false)} 
-          actions={menuActions} 
-        />
-        
+        {/* Bottom Menu Button */}
         <TouchableOpacity 
           style={styles.menuButton} 
           onPress={() => setIsMenuOpen(true)}
         >
           <Feather name="menu" size={24} color="white" />
         </TouchableOpacity>
+
+        {/* Action Sheet */}
+        <ActionSheet 
+          visible={isMenuOpen} 
+          onClose={() => setIsMenuOpen(false)} 
+          actions={menuActions} 
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -472,13 +499,18 @@ export default function NoteScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#0A0A0A' 
+    backgroundColor: '#121212' 
   },
   loadingContainer: { 
     flex: 1, 
-    backgroundColor: '#0A0A0A', 
+    backgroundColor: '#121212', 
     alignItems: 'center', 
     justifyContent: 'center' 
+  },
+  loadingText: {
+    color: '#666',
+    marginTop: 10,
+    fontSize: 16
   },
   header: { 
     flexDirection: 'row', 
@@ -489,28 +521,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20 
   },
   backButton: { 
-    padding: 8 
+    padding: 5 
   },
   headerTitle: { 
     color: 'white', 
     fontSize: 18, 
-    fontWeight: 'bold',
-    letterSpacing: 0.5
-  },
-  saveButton: {
-    padding: 8
+    fontWeight: '500' 
   },
   scrollContent: { 
     paddingHorizontal: 20, 
-    paddingBottom: 120 
+    paddingBottom: 100 
   },
   titleInput: { 
     color: 'white', 
-    fontSize: 48, 
+    fontSize: 36, 
     fontWeight: 'bold', 
-    marginBottom: 30,
-    lineHeight: 56,
-    textAlignVertical: 'top'
+    marginBottom: 20,
+    padding: 0
+  },
+  disabledInput: {
+    opacity: 0.6
   },
   labelsSection: {
     marginBottom: 20
@@ -518,81 +548,189 @@ const styles = StyleSheet.create({
   labelsContainer: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    alignItems: 'center'
+    alignItems: 'center', 
+    marginBottom: 10 
   },
   labelChipSelected: { 
-    backgroundColor: '#4A4A4A', 
-    borderRadius: 16, 
-    paddingVertical: 6, 
-    paddingHorizontal: 12, 
+    backgroundColor: 'rgba(255,255,255,0.15)', 
+    borderRadius: 20, 
+    paddingVertical: 8, 
+    paddingHorizontal: 14, 
     marginRight: 8, 
-    marginBottom: 8 
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center'
   },
   labelTextSelected: { 
     color: 'white', 
     fontSize: 14, 
-    fontWeight: '500' 
+    fontWeight: '600' 
   },
   labelChipAvailable: { 
-    backgroundColor: 'transparent', 
-    borderRadius: 16, 
-    paddingVertical: 6, 
-    paddingHorizontal: 12, 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderRadius: 20, 
+    paddingVertical: 8, 
+    paddingHorizontal: 14, 
     marginRight: 8, 
     marginBottom: 8, 
     borderWidth: 1, 
-    borderColor: '#4A4A4A' 
+    borderColor: 'rgba(255,255,255,0.1)' 
   },
   labelTextAvailable: { 
     color: '#888', 
     fontSize: 14 
   },
-  newLabelInput: { 
-    color: '#888', 
-    fontSize: 14, 
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  addLabelChip: {
+    backgroundColor: 'transparent', 
+    borderRadius: 20, 
+    paddingVertical: 8, 
+    paddingHorizontal: 14, 
+    marginRight: 8, 
+    marginBottom: 8, 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderStyle: 'dashed'
+  },
+  addLabelText: {
+    color: '#666', 
+    fontSize: 14,
     fontStyle: 'italic'
   },
-  contentContainer: {
-    flex: 1,
-    flexDirection: 'row'
+  newLabelInput: { 
+    color: 'white', 
+    fontSize: 14, 
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.3)',
+    minWidth: 100
   },
-  contentInput: { 
-    color: '#ddd', 
-    fontSize: 16, 
-    lineHeight: 24, 
-    flex: 1, 
-    minHeight: 400, 
-    textAlignVertical: 'top',
-    paddingRight: 60
+  contentEditor: { 
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+    borderRadius: 15, 
+    minHeight: 200, 
+    position: 'relative',
+    overflow: 'hidden'
   },
-  sideActions: {
+  contentRenderer: { 
+    padding: 15,
+    minHeight: 200
+  },
+  contentInput: {
     position: 'absolute',
+    top: 0,
+    left: 0,
     right: 0,
-    top: 20,
-    alignItems: 'center'
+    bottom: 0,
+    padding: 15,
+    color: 'transparent',
+    fontSize: 17,
+    lineHeight: 28,
+    textAlignVertical: 'top'
   },
-  sideActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  contentText: { 
+    color: '#ddd', 
+    fontSize: 17, 
+    lineHeight: 28,
+    marginBottom: 4
+  },
+  emptyLine: {
+    height: 28
+  },
+  imageContainer: {
+    marginVertical: 10,
+    borderRadius: 10,
+    overflow: 'hidden'
+  },
+  embeddedImage: { 
+    width: '100%', 
+    height: 200, 
+    borderRadius: 10 
+  },
+  checkboxContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginVertical: 6,
+    paddingVertical: 4
+  },
+  checkboxText: { 
+    color: '#ddd', 
+    fontSize: 17, 
+    marginLeft: 12, 
+    lineHeight: 28,
+    flex: 1
+  },
+  checkboxTextChecked: { 
+    textDecorationLine: 'line-through', 
+    color: '#666' 
+  },
+  lockIndicator: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12
+    marginTop: 15,
+    paddingVertical: 10
+  },
+  lockText: {
+    color: '#666',
+    marginLeft: 8,
+    fontSize: 14
+  },
+  uploadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    paddingVertical: 10
+  },
+  uploadingText: {
+    color: '#666',
+    marginLeft: 8,
+    fontSize: 14
   },
   menuButton: { 
     position: 'absolute', 
     bottom: 30, 
-    right: 24, 
-    backgroundColor: 'rgba(255,255,255,0.15)', 
+    left: 20, 
+    backgroundColor: 'rgba(255,255,255,0.2)', 
     width: 56, 
     height: 56, 
     borderRadius: 28, 
     alignItems: 'center', 
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)'
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8
+  }
+});
+
+const actionSheetStyles = StyleSheet.create({
+  overlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', 
+    justifyContent: 'flex-end' 
   },
+  container: { 
+    backgroundColor: '#1E1E1E', 
+    borderTopLeftRadius: 20, 
+    borderTopRightRadius: 20, 
+    padding: 20, 
+    paddingBottom: 40 
+  },
+  actionButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 15 
+  },
+  actionText: { 
+    color: 'white', 
+    fontSize: 18, 
+    marginLeft: 15 
+  },
+  cancelButton: { 
+    marginTop: 10, 
+    borderTopWidth: 1, 
+    borderTopColor: 'rgba(255,255,255,0.1)' 
+  }
 });

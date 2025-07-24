@@ -125,11 +125,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Pixel', // Ensure this font is loaded in your layout
   },
   input: {
-    backgroundColor: 'rgb(176, 176, 176)',
+    backgroundColor: 'rgba(255, 255, 255, 0.26)',
     borderRadius: 8,
     padding: 14,
     marginBottom: 16,
-    color: '#000',
+    color: 'white',
     fontSize: 16,
   },
   button: {

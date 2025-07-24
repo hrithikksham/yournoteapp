@@ -29,13 +29,6 @@ const updateNote = async (noteId, updateData) => {
   });
 };
 
-const deleteNote = async (noteId) => {
-  const token = await getToken();
-  return apiClient.delete(`/api/notes/${noteId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
 const uploadNoteImage = async (imageUri) => {
     const token = await getToken();
     const formData = new FormData();
@@ -60,12 +53,10 @@ const getAvailableLabels = async () => {
   });
 };
 
-
 export default {
   createNote,
   getNoteById,
   updateNote,
-  deleteNote,
   uploadNoteImage,
   getAvailableLabels,
   getBaseURL,
