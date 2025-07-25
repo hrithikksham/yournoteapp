@@ -42,6 +42,7 @@ export default function ReminderScreen() {
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // Sorts reminders by completion status, then by creation date
   const sortReminders = (list: Reminder[]) => {
     return list.sort((a, b) => {
       if (a.is_completed !== b.is_completed) return a.is_completed ? 1 : -1;
@@ -70,7 +71,7 @@ export default function ReminderScreen() {
     setReminders(sortReminders(updatedReminders));
 
     try {
-      // ✅ FIX: Send the update as an object
+      // ✅ FIX: Sends the update as a JSON object, as expected by the backend
       await remindersApi.updateReminder(reminder.id, { is_completed: updatedStatus });
     } catch (err) {
       setReminders(originalReminders); // Revert on error
@@ -83,7 +84,7 @@ export default function ReminderScreen() {
     try {
       const response = await remindersApi.createReminder({ 
         text: newReminderText.trim(),
-        due_date: new Date().toISOString().split('T')[0]
+        due_date: new Date().toISOString().split('T')[0] // Send current date
       });
       setReminders(prev => sortReminders([response.data, ...prev]));
       setNewReminderText('');
@@ -95,15 +96,28 @@ export default function ReminderScreen() {
     }
   };
 
-  const handleDeleteReminder = async (reminderId: string) => {
-    const originalReminders = [...reminders];
-    setReminders(reminders.filter(r => r.id !== reminderId));
-    try {
-      await remindersApi.deleteReminder(reminderId);
-    } catch (err) {
-      setReminders(originalReminders);
-      Alert.alert('Error', 'Failed to delete reminder.');
-    }
+  const handleDeleteReminder = (reminderId: string) => {
+    Alert.alert(
+      "Delete Reminder",
+      "Are you sure you want to permanently delete this reminder?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const originalReminders = [...reminders];
+            setReminders(reminders.filter(r => r.id !== reminderId));
+            try {
+              await remindersApi.deleteReminder(reminderId);
+            } catch (err) {
+              setReminders(originalReminders);
+              Alert.alert('Error', 'Failed to delete reminder.');
+            }
+          },
+        },
+      ]
+    );
   };
   
   const handleSaveDetails = async (reminderId: string, details: { text?: string; note?: string; due_time?: string }) => {
@@ -151,7 +165,7 @@ export default function ReminderScreen() {
       >
         <View style={styles.dateSection}>
           <Text style={styles.dateText}>{getCurrentDate()}</Text>
-          <Text style={styles.statsText}>total reminders {reminders.length}</Text>
+          <Text style={styles.statsText}>Total Reminders : {reminders.length}</Text>
         </View>
 
         <View>
@@ -175,26 +189,6 @@ export default function ReminderScreen() {
                   <TouchableOpacity onLongPress={() => setEditingReminder(reminder)}>
                     <Text style={[styles.reminderText, reminder.is_completed && styles.reminderTextCompleted]}>{reminder.text}</Text>
                   </TouchableOpacity>
-                )}
-                
-                {editingReminder?.id === reminder.id ? (
-                  <>
-                    <TextInput style={styles.detailInput} placeholder="add note..." placeholderTextColor="#555" value={editingReminder.note} onChangeText={(note) => setEditingReminder(prev => prev ? { ...prev, note } : null)} onBlur={() => handleSaveDetails(reminder.id, { note: editingReminder.note })} />
-                    <TextInput style={styles.detailInput} placeholder="add time (e.g., 10:30)" placeholderTextColor="#555" value={editingReminder.due_time} onChangeText={(due_time) => setEditingReminder(prev => prev ? { ...prev, due_time } : null)} onBlur={() => handleSaveDetails(reminder.id, { due_time: editingReminder.due_time })} />
-                  </>
-                ) : (
-                  <View style={styles.detailsRow}>
-                    {(reminder.note || reminder.due_time) ? (
-                      <>
-                        {reminder.note && <Text style={styles.detailText}>{reminder.note}</Text>}
-                        {reminder.due_time && <Text style={styles.detailText}>{reminder.due_time}</Text>}
-                      </>
-                    ) : (
-                       <TouchableOpacity onPress={() => setEditingReminder(reminder)}>
-                           <Text style={styles.addDetailText}>add details...</Text>
-                       </TouchableOpacity>
-                    )}
-                  </View>
                 )}
               </View>
 
@@ -228,8 +222,8 @@ const styles = StyleSheet.create({
   headerTitle: { color: 'white', fontSize: 22, fontFamily: 'Pixel' },
   scrollContent: { paddingHorizontal: 20, paddingTop: HEADER_HEIGHT + 20, paddingBottom: 100 },
   dateSection: { marginBottom: 30, paddingLeft: 5 },
-  dateText: { color: 'white', fontSize: 42, fontWeight: '300' },
-  statsText: { color: '#888', fontSize: 14, fontFamily: 'Pixel', marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 8 },
+  dateText: { color: 'white', fontSize: 30, fontFamily: 'Pixel' },
+  statsText: { color: '#888', fontSize: 15, fontWeight :'500',  fontStyle : 'italic', marginTop: 8, borderTopWidth: 0.8, borderTopColor: 'rgb(56, 54, 54)', paddingTop: 8 },
   reminderItemWrapper: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   reminderTextContainer: { flex: 1, marginLeft: 15, marginRight: 10 },
   reminderText: { color: 'white', fontSize: 18, lineHeight: 24 },
@@ -240,10 +234,10 @@ const styles = StyleSheet.create({
   addDetailText: { color: '#4A90E2', fontSize: 14, fontStyle: 'italic' },
   detailInput: { color: '#999', fontSize: 14, fontStyle: 'italic', paddingVertical: 4, marginTop: 4, borderBottomWidth: 1, borderBottomColor: '#444' },
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)' },
-  modalContent: { width: '90%', padding: 25, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  modalTitle: { color: 'white', fontSize: 24, fontFamily: 'Pixel', marginBottom: 20 },
+  modalContent: { width: '90%', padding: 25, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' },
+  modalTitle: { color: 'white', fontSize: 20, fontFamily: 'Pixel', marginBottom: 20, alignContent: 'center' ,justifyContent: 'center', textAlign: 'center' },
   textInput: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 15, color: 'white', fontSize: 16, minHeight: 60, textAlignVertical: 'top', marginBottom: 20 },
   addButton: { backgroundColor: '#FEFDE8', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-  addButtonDisabled: { backgroundColor: 'rgba(254, 253, 232, 0.5)' },
-  addButtonText: { color: '#1D1D1D', fontSize: 16, fontWeight: 'bold' },
+  addButtonDisabled: { backgroundColor: 'rgba(255, 255, 255, 0.26)' , borderBlockColor: 'rgba(17, 17, 17, 0.75)' },  
+  addButtonText: { color: '#111', fontSize: 16, fontWeight: 'bold' },
 });

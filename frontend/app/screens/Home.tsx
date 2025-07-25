@@ -71,6 +71,7 @@ export default function HomeScreen() {
     }, [])
   );
 
+
   const handleToggleReminder = async (reminderId: string, currentStatus: boolean) => {
     const originalReminders = [...data.reminders];
     const updatedReminders = data.reminders.map(r => 
@@ -79,9 +80,7 @@ export default function HomeScreen() {
     setData(prev => ({ ...prev, reminders: updatedReminders }));
 
     try {
-      // ✅ Corrected the function call to match the API definition (2 arguments)
-      // The token is handled automatically by the API layer.
-      await remindersApi.updateReminder(reminderId, !currentStatus);
+      await remindersApi.updateReminder(reminderId, { is_completed: !currentStatus });
     } catch (err) {
       console.error("Failed to update reminder:", err);
       setData(prev => ({ ...prev, reminders: originalReminders }));
@@ -190,7 +189,7 @@ export default function HomeScreen() {
             <>
               <View style={styles.column}>
                 {leftColumnNotes.map(note => (
-                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note`)}>
+                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note/${note._id}`)}>
                     <BlurView intensity={50} tint="dark" style={styles.noteCard}>
                       <Text style={styles.noteTitle} numberOfLines={2}>{note.title}</Text>
                       <Text style={styles.noteContent} numberOfLines={6}>{note.content}</Text>
@@ -200,7 +199,7 @@ export default function HomeScreen() {
               </View>
               <View style={styles.column}>
                 {rightColumnNotes.map(note => (
-                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note`)}>
+                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note/${note._id}`)}>
                     <BlurView intensity={50} tint="dark" style={styles.noteCard}>
                       <Text style={styles.noteTitle} numberOfLines={2}>{note.title}</Text>
                       <Text style={styles.noteContent} numberOfLines={8}>{note.content}</Text>
@@ -213,7 +212,7 @@ export default function HomeScreen() {
         </View>
       </Animated.ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/screens/Note')}>
+      <TouchableOpacity style={styles.fab} onPress={() => router.push('/screens/Note/Note')}>
         <Text style={styles.fabText}>ADD NOTE</Text>
       </TouchableOpacity>
     </View>

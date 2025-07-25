@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Scro
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import notesApi from '../../api/note';
+import notesApi from '../../../api/note';
 
 // --- Local ActionSheet Component ---
 interface Action { 

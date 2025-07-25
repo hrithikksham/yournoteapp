@@ -2,7 +2,7 @@ import axios from 'axios';
 // Dynamic import will be used inside the interceptor
 // import * as SecureStore from 'expo-secure-store'; 
 
-const API_BASE_URL = 'http://172.20.158.202:8000'; // Your IP
+const API_BASE_URL = 'http://172.20.157.111:8000'; // Your IP
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
