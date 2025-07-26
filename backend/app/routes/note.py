@@ -1,12 +1,9 @@
-# app/routes/note.py
-
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from fastapi.responses import JSONResponse
 from ..schemas.note_schema import NoteCreate, NoteUpdate, NoteOut
 from ..utils.auth import get_current_user
-from ..models import note_model # 👈 Import the note model
+from ..models import note_model
 from typing import List
-
-# All the other necessary imports from your original file
 import aiofiles
 import re
 from pathlib import Path
@@ -16,20 +13,16 @@ router = APIRouter(prefix="/api/notes", tags=["Notes"])
 
 @router.post("/", response_model=NoteOut)
 async def create_note(note: NoteCreate, user: dict = Depends(get_current_user)):
-    # Use the model to create the note
     new_note = await note_model.create_note(note, user_id=user["id"])
     return NoteOut(**new_note, id=str(new_note["_id"]))
 
 @router.get("/", response_model=List[NoteOut])
 async def get_notes(user: dict = Depends(get_current_user)):
-    # Use the model to get all notes
     notes = await note_model.get_notes_for_user(user_id=user["id"])
-    # Convert the list of dicts to a list of NoteOut models
     return [NoteOut(**note, id=str(note["_id"])) for note in notes]
 
 @router.get("/{note_id}", response_model=NoteOut)
 async def get_note_by_id(note_id: str, user: dict = Depends(get_current_user)):
-    # Use the model to get a single note
     note = await note_model.get_note_by_id(note_id=note_id, user_id=user["id"])
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -37,7 +30,6 @@ async def get_note_by_id(note_id: str, user: dict = Depends(get_current_user)):
 
 @router.put("/{note_id}", response_model=NoteOut)
 async def update_note(note_id: str, update_data: NoteUpdate, user: dict = Depends(get_current_user)):
-    # Use the model to update the note
     updated_note = await note_model.update_note(
         note_id=note_id, 
         user_id=user["id"], 
@@ -49,7 +41,6 @@ async def update_note(note_id: str, update_data: NoteUpdate, user: dict = Depend
 
 @router.delete("/{note_id}", status_code=204)
 async def delete_note(note_id: str, user: dict = Depends(get_current_user)):
-    # Use the model to delete the note
     deleted_count = await note_model.delete_note(note_id=note_id, user_id=user["id"])
     if deleted_count == 0:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -57,15 +48,15 @@ async def delete_note(note_id: str, user: dict = Depends(get_current_user)):
 
 @router.post("/upload-image")
 async def upload_note_image(
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # 👈 Explicitly expecting multipart/form-data
     user: dict = Depends(get_current_user)
 ):
-    # This function is already correct and doesn't need changes.
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid image format")
 
     uploads_dir = Path("app/static/note_images")
     uploads_dir.mkdir(parents=True, exist_ok=True)
+
     safe_filename = re.sub(r'[^a-zA-Z0-9._-]', '', file.filename)
     filename = f"{user['id']}_{datetime.utcnow().timestamp()}_{safe_filename}"
     file_path = uploads_dir / filename

@@ -6,7 +6,7 @@ from datetime import datetime
 from ..schemas.journal_schema import JournalEntryCreate, JournalEntryUpdate
 from typing import List, Dict, Optional
 
-collection = db["journal_entries"]
+collection = db["journal"]
 
 async def create_journal_entry(entry: JournalEntryCreate, user_id: str) -> Dict:
     """Creates a new journal entry in the database."""
@@ -21,10 +21,11 @@ async def create_journal_entry(entry: JournalEntryCreate, user_id: str) -> Dict:
     new_entry = await collection.find_one({"_id": result.inserted_id})
     return new_entry
 
-async def get_journal_entries_for_user(user_id: str) -> List[Dict]:
+# ✅ FIX: Renamed this function to match the one called in your routes.
+async def get_all_journal_entries_for_user(user_id: str) -> List[Dict]:
     """Retrieves all journal entries for a user, sorted by date."""
     cursor = collection.find({"user_id": user_id}).sort("entry_date", -1)
-    return await cursor.to_list(length=None)
+    return await cursor.to_list(length=None) # Using length=None to get all documents
 
 async def get_journal_entry_by_id(entry_id: str, user_id: str) -> Optional[Dict]:
     """Retrieves a single journal entry by its ID for a specific user."""
@@ -50,3 +51,5 @@ async def delete_journal_entry(entry_id: str, user_id: str) -> int:
     """Deletes a journal entry and returns the number of documents deleted."""
     result = await collection.delete_one({"_id": ObjectId(entry_id), "user_id": user_id})
     return result.deleted_count
+
+    

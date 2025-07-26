@@ -5,7 +5,8 @@ from ..utils.auth import get_current_user
 from ..schemas.journal_schema import JournalEntryCreate, JournalEntryOut  , JournalEntryUpdate
 from fastapi import HTTPException, Response
 from datetime import datetime
-from typing import List
+from typing import List,Dict 
+from collections import defaultdict
 
 router = APIRouter(prefix="/api/journal", tags=["Journal"])
 
@@ -86,3 +87,23 @@ async def update_journal_entry(
         raise HTTPException(status_code=404, detail="Journal entry not found")
 
     return JournalEntryOut(**updated_entry, id=str(updated_entry["_id"]))
+
+    
+@router.get("/all/grouped", response_model=Dict[str, Dict[str, List[JournalEntryOut]]])
+async def get_all_journal_entries_grouped(user: dict = Depends(get_current_user)):
+    """
+    Gets all journal entries for the current user, 
+    grouped by month (YYYY-MM) and then by day (YYYY-MM-DD).
+    """
+    entries = await journal_model.get_all_journal_entries_for_user(user_id=user["id"])
+    
+    # Create a nested dictionary: { "2025-07": { "2025-07-26": [entry1, entry2] } }
+    grouped_entries = defaultdict(lambda: defaultdict(list))
+    for entry in entries:
+        month_key = entry['entry_date'].strftime('%Y-%m')
+        day_key = entry['entry_date'].strftime('%Y-%m-%d')
+        grouped_entries[month_key][day_key].append(
+            JournalEntryOut(**entry, id=str(entry["_id"]))
+        )
+        
+    return grouped_entries

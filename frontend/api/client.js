@@ -1,14 +1,13 @@
 import axios from 'axios';
-// Dynamic import will be used inside the interceptor
-// import * as SecureStore from 'expo-secure-store'; 
+// ✅ Import SecureStore statically at the top of the file
+import * as SecureStore from 'expo-secure-store';
 
-const API_BASE_URL = 'http://172.20.157.111:8000'; // Your IP
+const API_BASE_URL = 'http://192.168.166.107:8000'; // Your IP
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// ✅ Re-export the base URL for use in other parts of the app
 export const getBaseURL = () => API_BASE_URL;
 
 // Response interceptor to handle token refreshes
@@ -22,12 +21,9 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true; // Mark as a retry to prevent infinite loops
 
       try {
-        // Dynamically import SecureStore only when needed
-        const SecureStore = (await import('expo-secure-store')).default;
-        
         const refreshToken = await SecureStore.getItemAsync('refresh_token');
         if (!refreshToken) {
-            // If no refresh token, reject and let the app handle logout
+            // If no refresh token, the user needs to log in again
             return Promise.reject(error);
         }
 
@@ -52,10 +48,10 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         console.log('Refresh token failed, logging out.', refreshError);
         // If refresh fails, clear tokens and reject
-        const SecureStore = (await import('expo-secure-store')).default;
         await SecureStore.deleteItemAsync('access_token');
         await SecureStore.deleteItemAsync('refresh_token');
         
+        // You would typically navigate to the login screen from your root navigator here
         return Promise.reject(refreshError);
       }
     }

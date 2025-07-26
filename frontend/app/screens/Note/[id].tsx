@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Scro
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import notesApi from '../../../api/note'; // ✅ FIX: Corrected import path to 'notes'
+import notesApi from '../../../api/note'; 
 
 // --- Local ActionSheet Component ---
 interface Action { 
@@ -91,7 +91,8 @@ export default function EditNoteScreen() {
         setTitle(note.title || '');
         setContent(note.content || '');
         setLabels(note.labels || []);
-        setIsLocked(note.is_locked || false); // Use snake_case from backend
+        // ✅ FIX: Use snake_case from backend response
+        setIsLocked(note.is_locked || false); 
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
