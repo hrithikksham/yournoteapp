@@ -18,3 +18,6 @@ class UserOut(BaseModel):
     email: EmailStr
     phone_no: str
     profile_image_url: Optional[str] = None
+
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str

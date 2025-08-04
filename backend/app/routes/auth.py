@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Body , UploadFile, File
 from pathlib import Path
 import re
 import aiofiles
-from ..schemas.user_schema import UserCreate, UserLogin, UserOut
+from ..schemas.user_schema import UserCreate, UserLogin, UserOut , TokenRefreshRequest
 from ..utils.auth import (
     create_access_token, 
     create_refresh_token, 
@@ -45,19 +45,19 @@ async def login(form_data: UserLogin):
 async def get_me(user: dict = Depends(get_current_user)):
     # This remains the same, as the dependency handles the logic
     return UserOut(**user)
-
 @router.post("/refresh")
-async def refresh_token(refresh_token: str = Body(..., embed=True)):
+async def refresh_token(request: TokenRefreshRequest):
     credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=401,
         detail="Invalid refresh token",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        # ✅ Correctly access the token from the request model
+        payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         
         if datetime.fromtimestamp(payload.get("exp")) < datetime.utcnow():
-            raise credentials_exception # Token has expired
+             raise credentials_exception # Token has expired
         
         user_id: str = payload.get("sub")
         if user_id is None:
@@ -66,13 +66,13 @@ async def refresh_token(refresh_token: str = Body(..., embed=True)):
     except JWTError:
         raise credentials_exception
 
-    # Use the model to ensure the user still exists
     user = await user_model.get_user_by_id(user_id)
     if user is None:
         raise credentials_exception
 
     new_access_token = create_access_token({"sub": user_id})
     return {"access_token": new_access_token, "token_type": "bearer"}
+
 
 @router.post("/upload-profile-image", response_model=UserOut)
 async def upload_profile_image(

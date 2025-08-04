@@ -134,7 +134,7 @@ export default function NoteScreen() {
         title: title.trim(), 
         content, 
         labels,
-        isLocked 
+        is_locked : isLocked
       };
       
       if (noteId) {
