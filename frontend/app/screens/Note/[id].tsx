@@ -136,7 +136,6 @@ export default function EditNoteScreen() {
     
     setIsSaving(true);
     try {
-      // ✅ FIX: Send is_locked (snake_case) to the backend
       const noteData = { 
         title: title.trim(), 
         content, 
@@ -260,7 +259,7 @@ export default function EditNoteScreen() {
       if (line.trim()) return <Text key={index} style={styles.contentText}>{line}</Text>;
       return <View key={index} style={styles.emptyLine} />;
     });
-  }, [content, isLocked]);
+  }, [content]);
 
   if (isLoading) {
     return <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#fff" /></View>;
@@ -353,7 +352,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
   loadingContainer: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: '#666', marginTop: 10, fontSize: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, paddingBottom: 20, paddingHorizontal: 20 },
+  header: { flexDirection: 'row',marginTop:60, alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, paddingBottom: 20, paddingHorizontal: 20 },
   backButton: { padding: 5 },
   headerTitle: { color: 'white', fontSize: 18, fontWeight: '500' },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },

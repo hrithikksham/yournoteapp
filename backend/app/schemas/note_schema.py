@@ -12,8 +12,8 @@ class NoteUpdate(BaseModel):
     title: Optional[str]
     content: Optional[str]
     labels: Optional[List[str]]
-    images: Optional[List[str]]
-
+    images: Optional[List[str]] 
+    isLocked: Optional[bool] = False
 class NoteOut(NoteCreate):
     id: str
     created_at: datetime
