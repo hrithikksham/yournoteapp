@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -30,70 +30,57 @@ import Animated, {
   withTiming,
   interpolateColor,
 } from "react-native-reanimated";
-import journalApi from "../../api/journal";
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 // =================================================================
-// --- AUTHENTICATED API CLIENT (your api/client.ts) ---
+// --- AUTHENTICATED API LAYER ---
 // =================================================================
 
-const API_BASE_URL = 'http://192.168.145.107:8000'; // Your IP
+const API_BASE_URL = 'https://yournoteapp-backend.onrender.com';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Response interceptor to handle token refreshes
 apiClient.interceptors.response.use(
-  (response) => response, // Directly return successful responses
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // Check for 401 error and ensure it's not a retry request
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true; // Mark as a retry to prevent infinite loops
-
+      originalRequest._retry = true;
       try {
         const refreshToken = await SecureStore.getItemAsync('refresh_token');
         if (!refreshToken) {
-            console.log("No refresh token found, user must log in again.");
-            return Promise.reject(error);
+          console.log("No refresh token, navigating to login.");
+          // Here you would ideally navigate to the login screen
+          return Promise.reject(error);
         }
-
-        // Make the refresh request directly using axios to avoid circular dependency
-        const refreshResponse = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
-          refresh_token: refreshToken
-        });
-
-        const { access_token: newAccessToken } = refreshResponse.data;
-
-        await SecureStore.setItemAsync('access_token', newAccessToken);
-
-        // Update the default header for subsequent requests
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
-        // Update the header for the original, failed request
-        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-
-        // Retry the original request with the new token
+        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refresh_token: refreshToken });
+        await SecureStore.setItemAsync('access_token', data.access_token);
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+        originalRequest.headers['Authorization'] = `Bearer ${data.access_token}`;
         return apiClient(originalRequest);
-
       } catch (refreshError) {
-        console.error('Refresh token failed, logging out.', refreshError);
+        console.error('Token refresh failed, logging out.', refreshError);
         await SecureStore.deleteItemAsync('access_token');
         await SecureStore.deleteItemAsync('refresh_token');
-        
-        // In a real app, a global state manager would navigate to login here.
-        // For now, we reject to let the calling function handle the error.
         return Promise.reject(refreshError);
       }
     }
-
-    // For all other errors, just reject
     return Promise.reject(error);
   }
 );
 
+// ✅ Re-integrated the missing journalApi object
+const journalApi = {
+  getGroupedJournals: async () => {
+    const token = await SecureStore.getItemAsync('access_token');
+    return apiClient.get('/api/journal/all/grouped', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+};
 
 // =================================================================
 // --- CONSTANTS & TYPES ---
@@ -189,13 +176,14 @@ function EntryCard({ entry, onPress }: EntryCardProps) {
   }));
 
   const thumbnail = entry.image_urls?.[0];
-  const preview = entry.content ? `${entry.content.slice(0, 120)}...` : "No additional content.";
+  // Using the `title` field as the main text for the card
+  const mainText = entry.content || "Whats on your mind?";
 
   return (
     <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={{ marginBottom: 14 }}>
       <Animated.View style={[styles.entryCard, rStyle]}>
         <View style={styles.entryLeft}>
-          <Text style={styles.entryTitle}>{preview}</Text>
+          <Text style={styles.entryContent} numberOfLines={2}>{mainText}</Text>
           <Text style={styles.entryDate}>{entry.entry_date ? format(new Date(entry.entry_date), "dd MMM yyyy") : ""}</Text>
         </View>
 
@@ -223,8 +211,11 @@ export default function JournalScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // ✅ 1. Create a ref for the calendar FlatList
+  const calendarListRef = useRef<FlatList<DayData>>(null);
+
   const fetchData = useCallback(async (isInitialLoad = false) => {
-    if (isInitialLoad) {
+    if (isInitialLoad && !isRefreshing) {
       const cached = await AsyncStorage.getItem(JOURNAL_CACHE_KEY);
       if (cached) {
         setJournalData(JSON.parse(cached).data || {});
@@ -238,7 +229,7 @@ export default function JournalScreen() {
       await AsyncStorage.setItem(JOURNAL_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data }));
     } catch (err: any) {
       console.error("Journal fetch failed:", err.message);
-      if (err.response?.status !== 401) { // Don't alert for auth errors handled by interceptor
+      if (err.response?.status !== 401) {
           Alert.alert("Sync Failed", "Could not fetch latest entries. Please check your connection.");
       }
     } finally {
@@ -249,7 +240,7 @@ export default function JournalScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchData(true);
+      fetchData(Object.keys(journalData).length === 0);
     }, [])
   );
 
@@ -272,6 +263,24 @@ export default function JournalScreen() {
     });
   }, [currentDate, journalData]);
 
+  // ✅ 2. Effect to scroll the calendar to today's date
+  useEffect(() => {
+    const isCurrentMonth = format(currentDate, 'yyyy-MM') === format(new Date(), 'yyyy-MM');
+    if (calendarDays.length > 0 && isCurrentMonth) {
+      const todayIndex = calendarDays.findIndex(day => day.isToday);
+
+      if (calendarListRef.current && todayIndex > -1) {
+        setTimeout(() => {
+          calendarListRef.current?.scrollToIndex({
+            index: todayIndex,
+            animated: true,
+            viewPosition: 0.5, // This centers the item
+          });
+        }, 250);
+      }
+    }
+  }, [calendarDays, currentDate]);
+
   const entriesForSelectedDate = useMemo((): JournalEntry[] => {
     const monthKey = format(selectedDate, "yyyy-MM");
     const dayKey = format(selectedDate, "yyyy-MM-dd");
@@ -289,7 +298,10 @@ export default function JournalScreen() {
     setSelectedDate(newDate);
   };
 
-  const handleAddPress = () => router.push('/screens/Journal/addjournal');
+  const handleAddPress = () => router.push({
+    pathname: '/screens/Journal/[id]',
+    params: { id: 'new', date: new Date().toISOString() } // Pass 'new' as id for new entry
+  });
   
   if (isLoading) {
     return <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#fff" /></View>;
@@ -300,7 +312,7 @@ export default function JournalScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Journal</Text>
         <TouchableOpacity onPress={handleAddPress} style={styles.addButton} accessibilityLabel="Add new journal entry">
-          <Ionicons name="add" size={28} color="#fff" />
+          <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -312,11 +324,18 @@ export default function JournalScreen() {
 
       <View style={styles.calendarContainer}>
         <FlatList
+          // ✅ 3. Attach the ref and add getItemLayout for performance
+          ref={calendarListRef}
           horizontal
           data={calendarDays}
           keyExtractor={(item) => item.date.toISOString()}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
+          getItemLayout={(data, index) => ({
+            length: 78, // Item width (68) + margin (10)
+            offset: 78 * index,
+            index,
+          })}
           renderItem={({ item }) => (
             <DayCell
               {...item}
@@ -355,7 +374,6 @@ export default function JournalScreen() {
 // =================================================================
 
 const styles = StyleSheet.create({
-  // Main screen styles
   container: { flex: 1, backgroundColor: "#000000" },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: '#000' },
   header: {
@@ -363,20 +381,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === "android" ? 24 : 12,
+    paddingTop: 46,
     paddingBottom: 8,
   },
-  headerTitle: { fontSize: 28, color: "#fff",fontFamily:'Pixel',paddingTop:20 , left:10},
+  headerTitle: { fontSize: 28, color: "#fff", fontFamily:'Pixel', left:10,paddingTop: 15 },
   addButton: {
-    backgroundColor: "rgba(255, 255, 255, 0)",
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    borderBlockColor: "rgba(255, 255, 255, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgb(255, 255, 255)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   monthSelector: {
     flexDirection: "row",
@@ -391,9 +407,8 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 16 },
   emptyContainer: { alignItems: "center", paddingTop: 60, paddingHorizontal: 20 },
   emptyTitle: { fontSize: 20, color: "#fff", fontWeight: "600", marginTop: 16 },
-  emptySubtitle: { fontSize: 25, color: "#9A9A9F", textAlign: "center", marginTop: 8 },
+  emptySubtitle: { fontSize: 8, color: "#9A9A9F", textAlign: "center", marginTop: 8 },
 
-  // DayCell styles
   dayCell: {
     width: 68,
     height: 88,
@@ -421,10 +436,8 @@ const styles = StyleSheet.create({
     bottom: 8,
   },
 
-  // EntryCard styles
   entryCard: {
     backgroundColor: "rgba(255, 255, 255, 0.06)",
-    borderBlockColor: "rgb(255, 255, 255)",
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
@@ -432,12 +445,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     minHeight: 92,
-    borderColor: "#2D2D2F"
+    borderColor: "rgba(255, 255, 255, 0.15)"
   },
   entryLeft: { flex: 1, paddingRight: 10 },
-  entryTitle: { fontSize: 20, color: "#fff", fontWeight: "600", marginBottom: 8 },
-  entryPreview: { fontSize: 14, color: "#9A9A9F", marginBottom: 8, lineHeight: 18 },
-  entryDate: { fontSize: 16, color: "#6B6B70" },
+  entryContent: { fontSize: 16, color: "rgb(255, 255, 255)", fontWeight: "800", marginBottom: 8, lineHeight: 22 },
+  entryDate: { fontSize: 13, color: "#8E8E93" },
   thumbnail: { width: 72, height: 72, borderRadius: 8, marginLeft: 6, backgroundColor: "#252525" },
   thumbnailPlaceholder: { width: 72, height: 72, borderRadius: 8, marginLeft: 6, backgroundColor: "rgb(43, 38, 31)", alignItems: "center", justifyContent: "center" },
 });

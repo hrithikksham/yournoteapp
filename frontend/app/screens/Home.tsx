@@ -156,7 +156,11 @@ export default function HomeScreen() {
           <View style={styles.remindersHeader}>
             <Text style={styles.cardTitle}>{new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</Text>
             <TouchableOpacity onPress={() => router.push('/screens/Reminder')}>
-                <Text style={styles.cardSubtitle}>Reminders</Text>
+              
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.cardSubtitle}>Reminders</Text>
+                  <Ionicons name="add" size={24} color="white" style={{ marginLeft: 10,backgroundColor:'rgba(255, 255, 255, 0.06)' ,borderRadius:100}} />
+                </View>
             </TouchableOpacity>
           </View>
           {data.reminders.length > 0 ? (
@@ -246,9 +250,9 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     paddingTop: HEADER_HEIGHT,
   },
-  card: { padding: 25, borderRadius: 20, overflow: 'hidden', marginBottom: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  card: { padding: 25, borderRadius: 20, overflow: 'hidden', marginBottom: 15, borderWidth: 0.8,borderColor: 'rgba(255, 255, 255, 0.6)',backgroundColor: 'rgba(255,255,255,0.05)',}, 
   cardTitle: { color: 'white', fontSize: 20, fontFamily: 'Pixel' },
-  cardSubtitle: { color: '#ccc', fontSize: 14, marginTop: 4 },
+  cardSubtitle: { color: '#ccc', fontSize: 14, marginTop: 2,fontStyle: 'italic' },
   plusIconContainer: { position: 'absolute', right: 20, top: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 15, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   remindersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   reminderItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
@@ -274,24 +278,26 @@ const styles = StyleSheet.create({
   },
   noteCard: { 
     padding: 20, 
-    borderRadius: 12, 
+    borderRadius: 16, 
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+    borderWidth: 0.2,
+    borderColor: 'rgba(255, 255, 255, 0.93)',
   },
   noteTitle: { 
-    color: 'white', 
-    fontSize: 18, 
-    fontFamily: 'system-ui',
+    color: 'rgb(255, 255, 255)', 
+    fontSize: 20, 
     marginBottom: 8, 
-    fontWeight: 'bold'
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textDecorationColor: 'rgba(255, 255, 255, 0.8)',
+    textTransform: 'uppercase'
   },
   noteContent: { 
-    color: '#ddd', 
+    color: 'rgba(255, 255, 255, 0.8)', 
     fontSize: 14, 
     lineHeight: 18, 
     letterSpacing: 0.8,
-    fontWeight: '300'
+    fontWeight: '200'
   },
 });

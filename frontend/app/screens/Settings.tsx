@@ -12,7 +12,7 @@ export default function SettingsScreen() {
   const appVersion = Constants.expoConfig?.version || '1.0.0';
 
   const handleContribute = () => {
-    const url = "https://github.com/your-repo"; // Replace with your repo URL
+    const url = "https://github.com/hrithikksham/yournoteapp.git"; // Replace with your repo URL
     Linking.openURL(url).catch(err => Alert.alert("Error", "Could not open the link."));
   };
 

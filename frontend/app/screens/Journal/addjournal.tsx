@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
   loadingContainer: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: '#666', marginTop: 10, fontSize: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 10 : 30, paddingBottom: 20, paddingHorizontal: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',  paddingBottom: 20, paddingHorizontal: 20,},
   backButton: { padding: 5 },
   headerTitle: { color: 'white', fontSize: 16, fontFamily:'Pixel' },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },

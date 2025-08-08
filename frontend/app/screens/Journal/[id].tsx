@@ -28,7 +28,7 @@ import * as SecureStore from 'expo-secure-store';
 // --- AUTHENTICATED API LAYER ---
 // =================================================================
 
-const API_BASE_URL = 'http://192.168.145.107:8000'; // Your Backend IP
+const API_BASE_URL = 'https://yournoteapp-backend.onrender.com';
 const apiClient = axios.create({ baseURL: API_BASE_URL });
 
 apiClient.interceptors.response.use(
@@ -122,29 +122,30 @@ function ActionSheet({ visible, onClose, actions }: ActionSheetProps) {
 export default function JournalEditorScreen() {
   const router = useRouter();
   const { id, date: entryDateParam } = useLocalSearchParams();
-  const journalId = Array.isArray(id) ? id[0] : id; // Ensure id is a string
+  
+  // ✅ This logic now correctly determines if we are editing or creating
+  const isEditing = id && id !== 'new';
+  const journalId = isEditing ? (Array.isArray(id) ? id[0] : id) : undefined;
 
-  // --- State Re-introduced title ---
-  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [entryDate, setEntryDate] = useState(new Date());
   
-  const [isLoading, setIsLoading] = useState(!!journalId);
+  const [isLoading, setIsLoading] = useState(!!isEditing);
   const [isSaving, setIsSaving] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
 
-  // --- Fetch data logic updated to handle title ---
   const fetchData = async () => {
+    // Only fetch if we are in "edit mode"
     if (!journalId) {
       if (entryDateParam) setEntryDate(new Date(entryDateParam as string));
       return;
     }
+    
     setIsLoading(true);
     try {
       const response = await journalApi.getJournalById(journalId);
       const journal = response.data;
-      setTitle(journal.title || ''); // Set title from fetched data
       setContent(journal.content || '');
       setEntryDate(new Date(journal.entry_date));
     } catch (error) {
@@ -158,8 +159,12 @@ export default function JournalEditorScreen() {
 
   useFocusEffect(useCallback(() => { fetchData(); }, [journalId]));
 
-  // --- Save logic updated for title ---
   const handleSaveJournal = async () => {
+    if (!content.trim()) {
+      Alert.alert('Empty Entry', 'Please write something in your journal entry.');
+      return;
+    }
+    
     setIsSaving(true);
     try {
       const imageUrlRegex = /!\[.*?\]\((.*?)\)/g;
@@ -167,7 +172,6 @@ export default function JournalEditorScreen() {
       const relativeImages = matches.map(match => match[1].replace(journalApi.getBaseURL(), ''));
 
       const journalData = { 
-        title: title.trim(),
         content, 
         entry_date: entryDate.toISOString().split('T')[0],
         image_urls: relativeImages
@@ -187,7 +191,6 @@ export default function JournalEditorScreen() {
     }
   };
 
-  // --- Image handling logic (no changes needed) ---
   const handleImagePick = async (useCamera: boolean) => {
     setIsMenuOpen(false);
     const action = useCamera ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
@@ -213,13 +216,11 @@ export default function JournalEditorScreen() {
     }
   };
 
-  // --- Menu actions ---
   const menuActions = [
     { icon: 'image' as const, title: 'Add Image from Gallery', onPress: () => handleImagePick(false) },
     { icon: 'camera' as const, title: 'Take Photo', onPress: () => handleImagePick(true) },
   ];
 
-  // --- ParsedContent logic (no changes needed) ---
   const ParsedContent = useMemo(() => {
     if (!content) return null;
     const lines = content.split('\n');
@@ -253,7 +254,7 @@ export default function JournalEditorScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{journalId ? 'edit entry' : 'add entry'}</Text>
+          <Text style={styles.headerTitle}>{isEditing ? 'edit journal' : 'journal'}</Text>
           <TouchableOpacity onPress={handleSaveJournal} disabled={isSaving}>
             {isSaving ? <ActivityIndicator color="white" size="small" /> : <Feather name="check" size={28} color="white" />}
           </TouchableOpacity>
@@ -294,15 +295,14 @@ export default function JournalEditorScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
+  container: { flex: 1, backgroundColor: 'rgb(0, 0, 0)' },
   loadingContainer: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 10 : 30, paddingBottom: 20, paddingHorizontal: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'ios' ? 10 : 30, paddingBottom: 20, paddingHorizontal: 20 ,marginTop: 10 },
   backButton: { padding: 5 },
   headerTitle: { color: 'white', fontSize: 16, fontFamily:'Pixel' },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  titleInput: { color: 'white', fontSize: 36, fontWeight: 'bold', marginBottom: 8, padding: 0 },
-  dateText: { color: '#888', fontSize: 14, marginBottom: 20, fontStyle: 'italic' },
-  contentEditor: { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 15, position: 'relative', overflow: 'hidden' },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 100, },
+  dateText: { color: '#888', fontSize: 16, marginBottom: 20, fontWeight: '600' },
+  contentEditor: { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 15, position: 'relative', overflow: 'hidden',minHeight: '100%', padding: 4 },
   contentRenderer: { padding: 15, minHeight: 400 },
   contentInput: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 15, color: 'transparent', fontSize: 18, lineHeight: 30, textAlignVertical: 'top' },
   contentText: { color: '#ddd', fontSize: 18, lineHeight: 30, marginBottom: 4 },
