@@ -220,7 +220,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
+  container: { flex: 1, width:'100%', backgroundColor: '#121212' },
   loadingContainer: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' },
   errorContainer: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center', padding: 20 },
   errorText: { color: '#ff6b6b', fontSize: 16, textAlign: 'center', marginBottom: 20 },

@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Scro
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as LocalAuthentication from "expo-local-authentication";
+
 import notesApi from '../../../api/note';
 
 // --- Local ActionSheet Component ---
@@ -40,9 +42,6 @@ function ActionSheet({ visible, onClose, actions }: ActionSheetProps) {
               <Text style={actionSheetStyles.actionText}>{action.title}</Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={[actionSheetStyles.actionButton, actionSheetStyles.cancelButton]} onPress={onClose}>
-            <Text style={[actionSheetStyles.actionText, { color: '#ff4d4d' }]}>Cancel</Text>
-          </TouchableOpacity>
         </Animated.View>
       </TouchableOpacity>
     </Modal>
@@ -194,30 +193,39 @@ export default function NoteScreen() {
     }
   };
 
-  // Insert checkbox/todo item
-  const insertCheckbox = () => {
-    const cursorPosition = contentInputRef.current?.props.selection?.start || content.length;
-    const beforeCursor = content.substring(0, cursorPosition);
-    const afterCursor = content.substring(cursorPosition);
-    const newCheckbox = (beforeCursor.length > 0 && !beforeCursor.endsWith('\n') ? '\n' : '');
-    
-    setContent(beforeCursor + newCheckbox + afterCursor);
-    setIsMenuOpen(false);
-    
-    // Focus the text input and set cursor position after checkbox
-    setTimeout(() => {
-      contentInputRef.current?.focus();
-    }, 100);
-  };
-
   // Lock/unlock note
-  const handleLockToggle = () => {
-    setIsLocked(!isLocked);
-    setIsMenuOpen(false);
-    Alert.alert(
-      isLocked ? "Note Unlocked" : "Note Locked", 
-      isLocked ? "Note is now editable" : "Note is now protected"
-    );
+  const handleLockToggle = async () => {
+    // If locking, no authentication needed
+    if (!isLocked) {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (!hasHardware) {
+        Alert.alert("Not Supported", "Your device does not support biometric authentication.");
+        return;
+      }
+      if (!isEnrolled) {
+        Alert.alert("Not Set Up", "No biometrics/PIN enrolled on this device.");
+        return;
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Unlock Note",
+        fallbackLabel: "Enter Passcode",
+        disableDeviceFallback: false,
+      });
+
+      if (result.success) {
+        setIsLocked(false);
+        Alert.alert("Note Unlocked", "You can now edit this note.");
+      } else {
+        Alert.alert("Authentication Failed", "Could not unlock the note.");
+      }
+    } else {
+      // Locking the note
+      setIsLocked(true);
+      Alert.alert("Note Locked", "This note is now protected.");
+    }
   };
 
   // Menu actions
@@ -231,11 +239,6 @@ export default function NoteScreen() {
       icon: 'camera' as const, 
       title: 'Take Photo', 
       onPress: () => handleImagePick(true) 
-    },
-    { 
-      icon: 'check-square' as const, 
-      title: 'Insert To-Do Item', 
-      onPress: insertCheckbox 
     },
     { 
       icon: isLocked ? 'unlock' as const : 'lock' as const, 
@@ -264,42 +267,6 @@ export default function NoteScreen() {
               resizeMode="contain" 
             />
           </View>
-        );
-      }
-
-      // Handle checkboxes/todos
-      const checkboxMatch = line.match(CHECKBOX_REGEX);
-      if (checkboxMatch) {
-        const isChecked = checkboxMatch[1] === 'x';
-        const text = checkboxMatch[2];
-        
-        const toggleCheck = () => {
-          if (isLocked) return;
-          
-          const newLines = [...lines];
-          newLines[index] = `- [${isChecked ? ' ' : 'x'}] ${text}`;
-          setContent(newLines.join('\n'));
-        };
-        
-        return (
-          <TouchableOpacity 
-            key={index} 
-            style={styles.checkboxContainer} 
-            onPress={toggleCheck}
-            disabled={isLocked}
-          >
-            <Feather 
-              name={isChecked ? "check-square" : "square"} 
-              size={22} 
-              color={isChecked ? "#50C878" : "#888"} 
-            />
-            <Text style={[
-              styles.checkboxText, 
-              isChecked && styles.checkboxTextChecked
-            ]}>
-              {text}
-            </Text>
-          </TouchableOpacity>
         );
       }
 
@@ -516,7 +483,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    paddingTop: 10, 
+    paddingTop: 30, 
     paddingBottom: 20, 
     paddingHorizontal: 20 
   },
@@ -525,8 +492,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: { 
     color: 'white', 
-    fontSize: 18, 
-    fontWeight: '500' 
+    fontSize: 16, 
+    fontFamily:'Pixel', 
   },
   scrollContent: { 
     paddingHorizontal: 20, 
@@ -552,7 +519,8 @@ const styles = StyleSheet.create({
     marginBottom: 10 
   },
   labelChipSelected: { 
-    backgroundColor: 'rgba(255,255,255,0.15)', 
+    backgroundColor: 'rgba(179, 174, 174, 0.44)', 
+    backdropFilter: 'blur(10px)',
     borderRadius: 20, 
     paddingVertical: 8, 
     paddingHorizontal: 14, 
@@ -567,14 +535,14 @@ const styles = StyleSheet.create({
     fontWeight: '600' 
   },
   labelChipAvailable: { 
-    backgroundColor: 'rgba(255,255,255,0.05)', 
+    backgroundColor: 'rgba(0, 0, 0, 0.05)', 
     borderRadius: 20, 
     paddingVertical: 8, 
     paddingHorizontal: 14, 
     marginRight: 8, 
     marginBottom: 8, 
     borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.1)' 
+    borderColor: 'rgba(248, 248, 248, 0.27)' 
   },
   labelTextAvailable: { 
     color: '#888', 
@@ -607,7 +575,7 @@ const styles = StyleSheet.create({
   contentEditor: { 
     backgroundColor: 'rgba(255, 255, 255, 0.05)', 
     borderRadius: 15, 
-    minHeight: 200, 
+    minHeight: '100%', 
     position: 'relative',
     overflow: 'hidden'
   },
@@ -690,8 +658,8 @@ const styles = StyleSheet.create({
   menuButton: { 
     position: 'absolute', 
     bottom: 30, 
-    left: 20, 
-    backgroundColor: 'rgba(255,255,255,0.2)', 
+    left: 40, 
+    backgroundColor: 'rgba(70, 70, 70, 0.47)', 
     width: 56, 
     height: 56, 
     borderRadius: 28, 
@@ -708,7 +676,7 @@ const styles = StyleSheet.create({
 const actionSheetStyles = StyleSheet.create({
   overlay: { 
     flex: 1, 
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', 
+    backgroundColor: 'rgba(7, 7, 7, 0.54)', 
     justifyContent: 'flex-end' 
   },
   container: { 
@@ -721,16 +689,11 @@ const actionSheetStyles = StyleSheet.create({
   actionButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    paddingVertical: 15 
+    paddingVertical: 10 
   },
   actionText: { 
     color: 'white', 
     fontSize: 18, 
-    marginLeft: 15 
+    marginLeft: 30 
   },
-  cancelButton: { 
-    marginTop: 10, 
-    borderTopWidth: 1, 
-    borderTopColor: 'rgba(255,255,255,0.1)' 
-  }
 });

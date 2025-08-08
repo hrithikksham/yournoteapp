@@ -2,7 +2,7 @@ import axios from 'axios';
 // ✅ Import SecureStore statically at the top of the file
 import * as SecureStore from 'expo-secure-store';
 
-const API_BASE_URL = 'http://172.20.156.237:8000'; // Your IP
+const API_BASE_URL = 'http://192.168.145.107:8000'; // Your IP
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
