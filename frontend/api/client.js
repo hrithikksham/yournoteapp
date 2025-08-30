@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 // Ensure this is your computer's local network IP address
-const API_BASE_URL = "http://192.168.106.107:8000"; 
+const API_BASE_URL = "https://yournoteapp-backend.onrender.com"; 
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
