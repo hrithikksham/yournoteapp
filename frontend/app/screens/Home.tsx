@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView,Alert, TouchableOpacity, FlatList, ActivityIndicator, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-
+import noteApi from '../../api/note';
 import homeApi from '../../api/home';
 import remindersApi from '../../api/reminders';
 
@@ -86,6 +86,34 @@ export default function HomeScreen() {
       setData(prev => ({ ...prev, reminders: originalReminders }));
     }
   };
+
+  const handleDeleteNotePrompt = (noteId: string) => {
+    Alert.alert(
+      "Delete Note",
+      "Are you sure you want to delete this note? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => handleDeleteNote(noteId) }
+      ]
+    );
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    const originalNotes = [...data.notes];
+    const updatedNotes = data.notes.filter(n => n._id !== noteId);
+    setData(prev => ({ ...prev, notes: updatedNotes }));
+
+    try {
+      await noteApi.deleteNote(noteId); // Assuming noteApi is imported correctly
+    }
+    catch (err) {
+      console.error("Failed to delete note:", err);
+      setData(prev => ({ ...prev, notes: originalNotes }));
+    }
+  };
+
+
+
 
   const filteredNotes = activeLabel === 'All' 
     ? data.notes 
@@ -193,7 +221,7 @@ export default function HomeScreen() {
             <>
               <View style={styles.column}>
                 {leftColumnNotes.map(note => (
-                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note/${note._id}`)}>
+                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onLongPress={() => handleDeleteNotePrompt(note._id)} onPress={() => router.push(`/screens/Note/${note._id}`)}>
                     <BlurView intensity={50} tint="dark" style={styles.noteCard}>
                       <Text style={styles.noteTitle} numberOfLines={2}>{note.title}</Text>
                       <Text style={styles.noteContent} numberOfLines={6}>{note.content}</Text>
@@ -203,7 +231,7 @@ export default function HomeScreen() {
               </View>
               <View style={styles.column}>
                 {rightColumnNotes.map(note => (
-                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onPress={() => router.push(`/screens/Note/${note._id}`)}>
+                  <TouchableOpacity key={note._id} style={styles.noteCardContainer} onLongPress={() => handleDeleteNotePrompt(note._id)} onPress={() => router.push(`/screens/Note/${note._id}`)}>
                     <BlurView intensity={50} tint="dark" style={styles.noteCard}>
                       <Text style={styles.noteTitle} numberOfLines={2}>{note.title}</Text>
                       <Text style={styles.noteContent} numberOfLines={8}>{note.content}</Text>

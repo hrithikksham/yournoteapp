@@ -21,7 +21,7 @@ export default function SettingsScreen() {
   const [labels, setLabels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const appVersion = Constants.expoConfig?.version ;
 
   // --- Static Link Handlers ---
   const handleContribute = () => {
@@ -29,15 +29,20 @@ export default function SettingsScreen() {
     Linking.openURL(url).catch(err => Alert.alert("Error", "Could not open the link."));
   };
 
-  const handleRecommend = async () => {
-    try {
-      await Share.share({
-        message: 'Check out YourNote! A great app for journaling and reminders.',
-      });
-    } catch (error: any) {
-      Alert.alert(error.message);
-    }
-  };
+const handleRecommend = async () => {
+  try {
+    await Share.share({
+      message: 
+        `✨ Check out **YourNote** ✨\n\n` +
+        `A *simple, secure, and efficient* note-taking app designed to help you stay organized.\n\n` +
+        `📝 Write Notes\n⏰ Set Reminders\n📖 Journal Your Thoughts\n\n` +
+        `Download now: https://hrithikksham.github.io/yournoteappapk/`,
+    });
+  } catch (error: any) {
+    Alert.alert("Oops!", "Something went wrong while sharing. Please try again.");
+  }
+};
+
 
   // --- Label Fetching Logic ---
   const fetchLabels = async () => {
@@ -154,12 +159,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
     maxWidth: '100%',
+    marginBottom: 20,
   },
   labelChip: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 1)',
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 14,
+    marginBottom: 0,
   },
   labelChipText: {
     color: '#5b5b5bff',

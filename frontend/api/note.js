@@ -75,6 +75,6 @@ export default {
   updateNote,
   uploadNoteImage,
   getAvailableLabels,
-  deleteNote, // ✅ Export the new function
+  deleteNote, 
   getBaseURL,
 };

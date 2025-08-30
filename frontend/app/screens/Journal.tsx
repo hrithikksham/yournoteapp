@@ -281,6 +281,7 @@ export default function JournalScreen() {
     }
   }, [calendarDays, currentDate]);
 
+  
   const entriesForSelectedDate = useMemo((): JournalEntry[] => {
     const monthKey = format(selectedDate, "yyyy-MM");
     const dayKey = format(selectedDate, "yyyy-MM-dd");
