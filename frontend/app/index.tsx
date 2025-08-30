@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function SplashScreen() {
@@ -7,15 +7,22 @@ export default function SplashScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/screens/Welcome'); // navigate after 2.5s
-    }, 2500);
+      // Use push instead of replace to allow back navigation if needed
+      router.push('/screens/Welcome');
+    }, 2000); // Display splash screen for 2 seconds
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [router]);
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/images/splash.png')} style={styles.logo} />
+      <Image 
+        source={require('../assets/images/splash.png')} 
+        style={styles.logo} 
+        // Add these props for better performance
+        resizeMode="contain"
+        fadeDuration={0} // Disable fade animation for faster loading
+      />
     </View>
   );
 }
@@ -31,6 +38,5 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     marginBottom: 20,
-    resizeMode: 'contain',
   },
 });

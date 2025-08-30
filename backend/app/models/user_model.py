@@ -10,7 +10,6 @@ from typing import Dict, Optional
 collection = db["users"]
 
 async def create_user(user: UserCreate) -> Dict:
-    """Creates a new user in the database after hashing the password."""
     hashed_password = get_password_hash(user.password)
     user_dict = {
         "account_name": user.account_name,
@@ -50,3 +49,23 @@ async def update_user_profile_image(user_id: str, image_url: str) -> Optional[Di
         return_document=ReturnDocument.AFTER
     )
     return updated_user
+
+async def delete_user_and_data(user_id: str) -> Dict[str, int]:
+    user_obj_id = ObjectId(user_id)
+
+    # Delete all associated data (make sure schema uses ObjectId for user_id)
+    notes_deleted = await db["notes"].delete_many({"user_id": user_obj_id})
+    journals_deleted = await db["journal_entries"].delete_many({"user_id": user_obj_id})
+    reminders_deleted = await db["reminders"].delete_many({"user_id": user_obj_id})
+
+    # Delete the user document itself
+    user_deleted = await collection.delete_one({"_id": user_obj_id})
+
+    return {
+        "notes_deleted": notes_deleted.deleted_count,
+        "journals_deleted": journals_deleted.deleted_count,
+        "reminders_deleted": reminders_deleted.deleted_count,
+        "user_deleted": user_deleted.deleted_count,
+    }
+
+

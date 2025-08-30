@@ -45,6 +45,7 @@ async def login(form_data: UserLogin):
 async def get_me(user: dict = Depends(get_current_user)):
     # This remains the same, as the dependency handles the logic
     return UserOut(**user)
+
 @router.post("/refresh")
 async def refresh_token(request: TokenRefreshRequest):
     credentials_exception = HTTPException(
@@ -104,3 +105,18 @@ async def upload_profile_image(
         raise HTTPException(status_code=404, detail="User not found during update.")
 
     return UserOut(**updated_user, id=str(updated_user["_id"]))
+
+@router.delete("/me", status_code=200)
+async def delete_current_user(user: dict = Depends(get_current_user)):
+    # Ensure we always pass string ObjectId
+    user_id = str(user.get("_id") or user.get("id"))
+
+    delete_counts = await user_model.delete_user_and_data(user_id)
+
+    return {
+        "message": "User account and all associated data deleted successfully.",
+        "details": delete_counts
+    }
+
+
+

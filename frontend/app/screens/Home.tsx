@@ -224,7 +224,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, width:'100%', backgroundColor: '#121212' },
+  container: { flex: 1, width:'100%', backgroundColor: '#000000ff' },
   loadingContainer: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' },
   errorContainer: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center', padding: 20 },
   errorText: { color: '#ff6b6b', fontSize: 16, textAlign: 'center', marginBottom: 20 },
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 30,
     paddingBottom: 10,
-    backgroundColor: '#121212',
+    backgroundColor: '#000000ff',
   },
   headerTitle: { color: 'white', fontSize: 28, fontFamily: 'Pixel', marginTop: 20 },
   scrollContent: {
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     paddingTop: HEADER_HEIGHT,
   },
-  card: { padding: 25, borderRadius: 20, overflow: 'hidden', marginBottom: 15, borderWidth: 0.8,borderColor: 'rgba(255, 255, 255, 0.6)',backgroundColor: 'rgba(255,255,255,0.05)',}, 
+  card: { padding: 25, borderRadius: 12, overflow: 'hidden', marginBottom: 15, borderWidth: 0.8,borderColor: 'rgba(255, 255, 255, 0.6)',backgroundColor: 'rgba(255,255,255,0.05)',}, 
   cardTitle: { color: 'white', fontSize: 20, fontFamily: 'Pixel' },
   cardSubtitle: { color: '#ccc', fontSize: 14, marginTop: 2,fontStyle: 'italic' },
   plusIconContainer: { position: 'absolute', right: 20, top: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 15, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     padding: 20, 
     borderRadius: 16, 
     overflow: 'hidden',
-    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 0.2,
     borderColor: 'rgba(255, 255, 255, 0.93)',
   },

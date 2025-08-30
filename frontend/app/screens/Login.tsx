@@ -1,24 +1,19 @@
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { BlurView } from 'expo-blur';
-// ✅ Import the new API module
-import authApi from '../../api/auth';
-import * as SecureStore from 'expo-secure-store';
+import { useAuth } from '../context/authcontexts'; // ✅ FIX: Corrected import path and name
 
 const { width } = Dimensions.get('window');
 
-// This function should eventually move into an AuthContext
-async function saveToken(token: string) {
-  await SecureStore.setItemAsync('user_token', token);
-}
-
 export default function LoginScreen() {
   const router = useRouter();
-  // ✅ Use 'identifier' to match the backend and UI
+  // ✅ FIX: Destructure the 'login' function from the useAuth hook's return object
+  const { login } = useAuth(); 
+  
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Add loading state
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!identifier || !password) {
@@ -27,17 +22,13 @@ export default function LoginScreen() {
     }
 
     setIsLoading(true);
-
     try {
-      // ✅ Call the login function from your API module with the correct payload
-      const response = await authApi.login({ identifier, password });
-      await SecureStore.setItemAsync('access_token', response.data.access_token);
-      await SecureStore.setItemAsync('refresh_token', response.data.refresh_token);
-
-      router.replace('/screens/Home');
-
+      // ✅ This now correctly calls the login function from the context
+      await login(identifier, password);
+      // The root layout will automatically handle navigation after the token is set.
+      // No router.replace() needed here.
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || 'An unexpected error occurred.';
+      const errorMessage = err.response?.data?.detail || 'Invalid credentials or server error.';
       Alert.alert('Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
@@ -56,6 +47,7 @@ export default function LoginScreen() {
           value={identifier}
           onChangeText={setIdentifier}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <TextInput
@@ -67,7 +59,6 @@ export default function LoginScreen() {
           onChangeText={setPassword}
         />
 
-        {/* ✅ Disable button and show loading indicator */}
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
           {isLoading ? (
             <ActivityIndicator color="#1D1D1D" />
@@ -99,6 +90,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.6)',
     backgroundColor: 'rgba(255,255,255,0.05)',
+    overflow: 'hidden',
   },
   heading: {
     fontSize: 28,
@@ -114,15 +106,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
     color: '#fff',
-    fontFamily: 'PoppinsRegular',
   },
   button: {
     backgroundColor: '#fff',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 100,
     alignItems: 'center',
     marginTop: 10,
-    minHeight: 48, // Ensure button has a consistent height
+    minHeight: 48, 
     justifyContent: 'center',
   },
   buttonText: {

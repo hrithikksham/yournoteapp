@@ -35,7 +35,7 @@ export default function RegisterScreen() {
       // The status check is often implicitly handled by axios (it throws on non-2xx)
       // but an explicit check is fine too.
       Alert.alert('Success', 'Account created successfully! Please log in.');
-      router.replace('/screens/Login');
+      router.replace('/screens/Welcome');
 
     } catch (error: any) {
       // Provide more specific error feedback from the backend
