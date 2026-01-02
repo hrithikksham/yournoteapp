@@ -147,11 +147,13 @@ npm install
 expo start
 ```
 
----
 <div align="center" >
+  
 ## 👨‍💻 Author
 ###Hrithik Sham <br/>
-###🔗 LinkedIn: [https://linkedin.com/in/hrithik-sham-d2811](https://linkedin.com/in/hrithik-sham-d2811) </div>
+###🔗 LinkedIn: [https://linkedin.com/in/hrithik-sham-d2811](https://linkedin.com/in/hrithik-sham-d2811)
+
+</div>
 
 > *Yournote is built for people who want ownership over their thoughts — fast, private, and distraction-free.*
 
