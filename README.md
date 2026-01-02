@@ -1,7 +1,7 @@
 
 <div align="center">
 
-# 📓 Yournote  
+# YOURNOTE 
 ### Secure · Minimal · Offline-First Android Notes App
 
 ![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
@@ -148,16 +148,14 @@ expo start
 ```
 
 ---
-
+<div align="center" >
+  
 ## 👨‍💻 Author
 
-**Hrithik Sham D H**
-B.Tech – CSE (AI & Robotics)
+** Hrithik Sham **
 🔗 LinkedIn: [https://linkedin.com/in/hrithik-sham-d2811](https://linkedin.com/in/hrithik-sham-d2811)
 
----
+  </div>
 
 > *Yournote is built for people who want ownership over their thoughts — fast, private, and distraction-free.*
 
-
-```
