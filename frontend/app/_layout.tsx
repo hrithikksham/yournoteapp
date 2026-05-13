@@ -60,7 +60,6 @@ useEffect(() => {
       <Stack.Screen name="screens/SIgnup" />
       <Stack.Screen name="screens/Home" />
       <Stack.Screen name="screens/About" />
-      <Stack.Screen name="screens/Journal" />
       <Stack.Screen name="screens/Reminder" />
       <Stack.Screen name="screens/Settings" />
       <Stack.Screen name="screens/user" />

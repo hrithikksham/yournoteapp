@@ -170,15 +170,6 @@ export default function HomeScreen() {
         )}
         scrollEventThrottle={16}
       >
-        <TouchableOpacity onPress={() => router.push('/screens/Journal')}>
-          <BlurView intensity={40} tint="dark" style={styles.card}>
-            <Text style={styles.cardTitle}>Journal Book</Text>
-            <Text style={styles.cardSubtitle}>your complete unaltered voice.</Text>
-            <View style={styles.plusIconContainer}>
-              <Ionicons name="add" size={24} color="white" />
-            </View>
-          </BlurView>
-        </TouchableOpacity>
 
         <BlurView intensity={40} tint="dark" style={styles.card}>
           <View style={styles.remindersHeader}>
@@ -278,7 +269,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     paddingTop: HEADER_HEIGHT,
   },
-  card: { padding: 25, borderRadius: 12, overflow: 'hidden', marginBottom: 15, borderWidth: 0.8,borderColor: 'rgba(255, 255, 255, 0.6)',backgroundColor: 'rgba(255,255,255,0.05)',}, 
+  card: { padding: 25, borderRadius: 25, overflow: 'hidden', marginBottom: 15, borderWidth: 0.8,borderColor: 'rgba(255, 255, 255, 0.6)',backgroundColor: 'rgba(255,255,255,0.05)',}, 
   cardTitle: { color: 'white', fontSize: 20, fontFamily: 'Pixel' },
   cardSubtitle: { color: '#ccc', fontSize: 14, marginTop: 2,fontStyle: 'italic' },
   plusIconContainer: { position: 'absolute', right: 20, top: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 15, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
